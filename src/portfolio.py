@@ -189,15 +189,17 @@ def rebalance_portfolio(
             
             # Calculate adjustment factor based on beta deviation
             beta_deviation = target_beta - current_beta
-            # Use more aggressive adjustment for faster convergence
-            beta_adjustment = beta_deviation * 0.5  # Increased adjustment factor
+            # Use aggressive adjustment for faster convergence
+            beta_adjustment = beta_deviation * 0.8  # Increased adjustment factor further
             progress.update(task, advance=20)
             
             # Adjust positions iteratively
-            max_iterations = 20  # Increased max iterations
+            max_iterations = 30  # Increased max iterations further
             iteration = 0
             new_portfolio = current_portfolio.copy()
             total_adjustment = 0
+            best_portfolio = new_portfolio.copy()
+            best_beta_diff = float('inf')
             
             while iteration < max_iterations:
                 # Adjust long positions
@@ -221,15 +223,35 @@ def rebalance_portfolio(
                 }
                 new_beta = compute_portfolio_beta(new_positions, betas)
                 
+                # Track best portfolio
+                current_beta_diff = abs(new_beta - target_beta)
+                if current_beta_diff < best_beta_diff:
+                    best_beta_diff = current_beta_diff
+                    best_portfolio = new_portfolio.copy()
+                
                 # Check if target reached
-                if abs(new_beta - target_beta) <= tolerance:
+                if current_beta_diff <= tolerance:
                     break
                 
-                # Update adjustment factor with damping
+                # Update adjustment factor with adaptive damping
                 beta_deviation = target_beta - new_beta
-                damping_factor = max(0.1, 1.0 - iteration/max_iterations)  # Gradually reduce adjustments
-                beta_adjustment = beta_deviation * 0.5 * damping_factor
+                damping_factor = max(0.2, 1.0 - iteration/max_iterations)  # Less aggressive damping
+                beta_adjustment = beta_deviation * 0.8 * damping_factor  # More aggressive base adjustment
+                
+                # If we're getting worse, try reversing direction
+                if iteration > 0 and current_beta_diff > best_beta_diff * 1.5:
+                    beta_adjustment = -beta_adjustment * 0.5
+                
                 iteration += 1
+            
+            # Use the best portfolio we found if we didn't converge
+            if abs(new_beta - target_beta) > tolerance:
+                new_portfolio = best_portfolio
+                new_positions = {
+                    ticker: shares * day_prices[ticker]
+                    for ticker, shares in new_portfolio.items()
+                }
+                new_beta = compute_portfolio_beta(new_positions, betas)
             
             progress.update(task, advance=40)
             
