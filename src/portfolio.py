@@ -188,24 +188,47 @@ def rebalance_portfolio(
             short_positions = {t: s for t, s in current_portfolio.items() if s < 0}
             
             # Calculate adjustment factor based on beta deviation
-            beta_adjustment = (target_beta - current_beta) / 2
+            beta_deviation = target_beta - current_beta
+            # Use smaller adjustment steps for more precise convergence
+            beta_adjustment = beta_deviation * 0.1  # Reduced adjustment factor
             progress.update(task, advance=20)
             
-            # Adjust positions
+            # Adjust positions iteratively
+            max_iterations = 10
+            iteration = 0
             new_portfolio = current_portfolio.copy()
             total_adjustment = 0
             
-            for ticker in long_positions:
-                adjustment = beta_adjustment * abs(positions[ticker]) / betas[ticker]
-                new_shares = current_portfolio[ticker] + (adjustment / day_prices[ticker])
-                new_portfolio[ticker] = new_shares
-                total_adjustment += abs(new_shares - current_portfolio[ticker])
-            
-            for ticker in short_positions:
-                adjustment = -beta_adjustment * abs(positions[ticker]) / betas[ticker]
-                new_shares = current_portfolio[ticker] + (adjustment / day_prices[ticker])
-                new_portfolio[ticker] = new_shares
-                total_adjustment += abs(new_shares - current_portfolio[ticker])
+            while iteration < max_iterations:
+                # Adjust long positions
+                for ticker in long_positions:
+                    adjustment = beta_adjustment * abs(positions[ticker]) / betas[ticker]
+                    new_shares = new_portfolio[ticker] + (adjustment / day_prices[ticker])
+                    total_adjustment += abs(new_shares - new_portfolio[ticker])
+                    new_portfolio[ticker] = new_shares
+                
+                # Adjust short positions
+                for ticker in short_positions:
+                    adjustment = -beta_adjustment * abs(positions[ticker]) / betas[ticker]
+                    new_shares = new_portfolio[ticker] + (adjustment / day_prices[ticker])
+                    total_adjustment += abs(new_shares - new_portfolio[ticker])
+                    new_portfolio[ticker] = new_shares
+                
+                # Calculate new beta
+                new_positions = {
+                    ticker: shares * day_prices[ticker]
+                    for ticker, shares in new_portfolio.items()
+                }
+                new_beta = compute_portfolio_beta(new_positions, betas)
+                
+                # Check if target reached
+                if abs(new_beta - target_beta) <= tolerance:
+                    break
+                
+                # Update adjustment factor
+                beta_deviation = target_beta - new_beta
+                beta_adjustment = beta_deviation * 0.1
+                iteration += 1
             
             progress.update(task, advance=40)
             
