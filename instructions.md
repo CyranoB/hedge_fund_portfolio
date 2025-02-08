@@ -101,29 +101,29 @@
        - [x] Returns the updated portfolio along with any transaction cost details.
 
 5. **Implement Performance Module (`performance.py`)**  
-   - [ ] **Import Required Libraries**  
-     - [ ] Import `pandas` and any additional libraries for calculations.
-   - [ ] **Calculate Daily Returns**  
-     - [ ] Implement logic to compute daily returns from the adjusted close prices:
-       - [ ] Ensure that returns are computed for every ticker.
-       - [ ] Handle any missing data points appropriately.
-   - [ ] **Simulate Daily Portfolio Performance**  
-     - [ ] Create function `simulate_portfolio(daily_prices, portfolio, betas, market_returns, exchange_rates)` that:
-       - [ ] Iterates over each trading day in the simulation period.
-       - [ ] For each day:
-         - [ ] Extract current prices from the `daily_prices` DataFrame.
-         - [ ] Calculate the current position value for each ticker (number of shares × current price).
-         - [ ] Sum the absolute position values to compute total portfolio exposure.
-         - [ ] Calculate the daily return of the portfolio.
-         - [ ] Compute the portfolio beta using `compute_portfolio_beta`.
-         - [ ] Check if the portfolio beta exceeds `BETA_TOLERANCE`:
-           - [ ] If yes, trigger rebalancing by calling `rebalance_portfolio` and record the event.
-         - [ ] Apply daily management fees:
-           - [ ] Calculate fee as `(MANAGEMENT_FEE_ANNUAL / 252) * portfolio_value`.
-           - [ ] Deduct the fee from the portfolio value.
-         - [ ] Convert the portfolio value from USD to CAD using the day's exchange rate.
-         - [ ] Log all details for the day (date, portfolio values in USD and CAD, daily return, beta, rebalancing flag).
-       - [ ] Return a DataFrame with daily simulation results.
+   - [x] **Import Required Libraries**  
+     - [x] Import `pandas` and any additional libraries for calculations.
+   - [x] **Calculate Daily Returns**  
+     - [x] Implement logic to compute daily returns from the adjusted close prices:
+       - [x] Ensure that returns are computed for every ticker.
+       - [x] Handle any missing data points appropriately.
+   - [x] **Simulate Daily Portfolio Performance**  
+     - [x] Create function `simulate_portfolio(daily_prices, portfolio, betas, market_returns, exchange_rates)` that:
+       - [x] Iterates over each trading day in the simulation period.
+       - [x] For each day:
+         - [x] Extract current prices from the `daily_prices` DataFrame.
+         - [x] Calculate the current position value for each ticker (number of shares × current price).
+         - [x] Sum the absolute position values to compute total portfolio exposure.
+         - [x] Calculate the daily return of the portfolio.
+         - [x] Compute the portfolio beta using `compute_portfolio_beta`.
+         - [x] Check if the portfolio beta exceeds `BETA_TOLERANCE`:
+           - [x] If yes, trigger rebalancing by calling `rebalance_portfolio` and record the event.
+         - [x] Apply daily management fees:
+           - [x] Calculate fee as `(MANAGEMENT_FEE_ANNUAL / 252) * portfolio_value`.
+           - [x] Deduct the fee from the portfolio value.
+         - [x] Convert the portfolio value from USD to CAD using the day's exchange rate.
+         - [x] Log all details for the day (date, portfolio values in USD and CAD, daily return, beta, rebalancing flag).
+       - [x] Return a DataFrame with daily simulation results.
 
 6. **Implement Reporting Module (`reporting.py`)**  
    - [ ] **Import Required Libraries**  
@@ -188,33 +188,4 @@
        - [ ] Rebalancing logic (ensuring beta neutrality is restored when triggered).
    - [ ] **Code Quality**  
      - [ ] Ensure adherence to PEP 8 style guidelines.
-     - [ ] Run static analysis tools (like `flake8` or `pylint`) to verify code quality.
-
-9. **Final Integration and Validation**  
-   - [ ] **Run the Full Simulation**  
-     - [ ] Execute the complete program for the analysis period (February 2025).
-     - [ ] Validate that the simulation runs without errors.
-   - [ ] **Verify Outputs**  
-     - [ ] Confirm that the daily simulation DataFrame contains correct values (USD/CAD portfolio values, beta, flags).
-     - [ ] Check that the PDF report (monthly investor letter) is generated and includes:
-       - [ ] Strategy justification.
-       - [ ] Performance summary.
-       - [ ] Beta evolution and rebalancing details.
-     - [ ] Verify that the Excel file is created with multiple sheets (daily performance, rebalancing logs, beta calculations).
-   - [ ] **Review Logging and Error Handling**  
-     - [ ] Inspect log files (or console output) for any errors or warnings during the simulation.
-
-10. **Submission and Delivery**  
-    - [ ] **Prepare the Final Deliverables**  
-      - [ ] Ensure the PDF report is finalized and formatted correctly.
-      - [ ] Confirm that the Excel file with detailed performance analysis is accurate and complete.
-    - [ ] **Email Submission**  
-      - [ ] By January 31, 2025, send an email to `Jonathan.plante@hec.ca` with:
-        - [ ] The names of the teams and all participants.
-        - [ ] The long and short tickers that comprise the portfolio.
-      - [ ] Before March 14, 2025, email:
-        - [ ] The final PDF report (monthly investor letter).
-        - [ ] The Excel file with all analysis details.
-    - [ ] **Final Checks**  
-      - [ ] Verify that no submission deadlines are missed.
-      - [ ] Double-check that all requirements (e.g., fee calculations, exchange rate conversion, beta reporting) are documented in the report.
+     - [ ] Run static analysis tools (like `
