@@ -3,4 +3,5 @@ numpy>=1.20.0
 yfinance>=0.2.0
 statsmodels>=0.13.0
 openpyxl>=3.0.0
-reportlab>=3.6.0 
+reportlab>=3.6.0
+rich>=13.0.0 

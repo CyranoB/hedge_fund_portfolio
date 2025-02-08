@@ -51,26 +51,26 @@
        - [x] `BETA_TOLERANCE = 0.05`
 
 3. **Implement Data Acquisition Module (`data_acquisition.py`)**  
-   - [ ] **Import Required Libraries**  
-     - [ ] Import `yfinance` for data download.
-     - [ ] Import `pandas` for data manipulation.
-   - [ ] **Implement Date Range Calculation**  
-     - [ ] Create a function `get_date_range(year, month)` that:
-       - [ ] Accepts `year` and `month` as input.
-       - [ ] Calculates and returns the start and end dates for the given month (e.g., using `pandas.Period` or similar).
-   - [ ] **Download Market Data**  
-     - [ ] Create a function `download_market_data(tickers, start_date, end_date)` that:
-       - [ ] Uses `yfinance.download` to retrieve historical adjusted close prices for all given tickers.
-       - [ ] Returns a `DataFrame` with the prices indexed by date.
-       - [ ] Handles missing data (filtering out non-trading days).
-   - [ ] **Implement Exchange Rate Data Retrieval**  
-     - [ ] Either:
-       - [ ] Download USD/CAD exchange rate data via an API or CSV.
-       - [ ] OR simulate a constant rate for testing purposes.
-     - [ ] Ensure exchange rates are stored in a time-indexed structure (e.g., a `Series`).
-   - [ ] **Data Validation and Cleaning**  
-     - [ ] Ensure all tickers have data for the entire period.
-     - [ ] Align all datasets by date.
+   - [x] **Import Required Libraries**  
+     - [x] Import `yfinance` for data download.
+     - [x] Import `pandas` for data manipulation.
+   - [x] **Implement Date Range Calculation**  
+     - [x] Create a function `get_date_range(year, month)` that:
+       - [x] Accepts `year` and `month` as input.
+       - [x] Calculates and returns the start and end dates for the given month (e.g., using `pandas.Period` or similar).
+   - [x] **Download Market Data**  
+     - [x] Create a function `download_market_data(tickers, start_date, end_date)` that:
+       - [x] Uses `yfinance.download` to retrieve historical adjusted close prices for all given tickers.
+       - [x] Returns a `DataFrame` with the prices indexed by date.
+       - [x] Handles missing data (filtering out non-trading days).
+   - [x] **Implement Exchange Rate Data Retrieval**  
+     - [x] Either:
+       - [x] Download USD/CAD exchange rate data via an API or CSV.
+       - [x] OR simulate a constant rate for testing purposes.
+     - [x] Ensure exchange rates are stored in a time-indexed structure (e.g., a `Series`).
+   - [x] **Data Validation and Cleaning**  
+     - [x] Ensure all tickers have data for the entire period.
+     - [x] Align all datasets by date.
 
 4. **Implement Portfolio Module (`portfolio.py`)**  
    - [ ] **Import Required Libraries**  
@@ -218,7 +218,3 @@
     - [ ] **Final Checks**  
       - [ ] Verify that no submission deadlines are missed.
       - [ ] Double-check that all requirements (e.g., fee calculations, exchange rate conversion, beta reporting) are documented in the report.
-
----
-
-Following this detailed checklist will help an AI coding agent—or any developer—implement the full solution step by step. Each story point is broken down into actionable, testable tasks ensuring that all necessary data and functionality are incorporated into the final deliverable.
