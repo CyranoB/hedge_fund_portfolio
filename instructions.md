@@ -1,29 +1,29 @@
 # Hedge Fund Portfolio Project - Story Points
 
 1. **Project Setup and Repository Structure**  
-   - [ ] **Create the Project Folder Structure**  
-     - [ ] Inside the root, create the following subdirectories:
-       - [ ] `data/` – for storing market data files.
-       - [ ] `docs/` – for documentation and the final PDF report.
-       - [ ] `src/` – for all source code files.
-       - [ ] `tests/` – for unit tests and other testing resources.
-   - [ ] **Create Core Files and Artifacts**  
-     - [ ] In the `src/` folder, create:
-       - [ ] `__init__.py` (to make the folder a Python package).
-       - [ ] `config.py`
-       - [ ] `data_acquisition.py`
-       - [ ] `portfolio.py`
-       - [ ] `performance.py`
-       - [ ] `reporting.py`
-       - [ ] `main.py`
-     - [ ] Create `requirements.txt` in the root with the following dependencies:
-       - [ ] `pandas`
-       - [ ] `numpy`
-       - [ ] `yfinance`
-       - [ ] `statsmodels`
-       - [ ] `openpyxl`
-       - [ ] `reportlab` (or any alternative for PDF generation)
-     - [ ] Create a `README.md` file outlining project goals, setup instructions, and usage.
+   - [x] **Create the Project Folder Structure**  
+     - [x] Inside the root, create the following subdirectories:
+       - [x] `data/` – for storing market data files.
+       - [x] `docs/` – for documentation and the final PDF report.
+       - [x] `src/` – for all source code files.
+       - [x] `tests/` – for unit tests and other testing resources.
+   - [x] **Create Core Files and Artifacts**  
+     - [x] In the `src/` folder, create:
+       - [x] `__init__.py` (to make the folder a Python package).
+       - [x] `config.py`
+       - [x] `data_acquisition.py`
+       - [x] `portfolio.py`
+       - [x] `performance.py`
+       - [x] `reporting.py`
+       - [x] `main.py`
+     - [x] Create `requirements.txt` in the root with the following dependencies:
+       - [x] `pandas`
+       - [x] `numpy`
+       - [x] `yfinance`
+       - [x] `statsmodels`
+       - [x] `openpyxl`
+       - [x] `reportlab` (or any alternative for PDF generation)
+     - [x] Create a `README.md` file outlining project goals, setup instructions, and usage.
 
 2. **Implement Configuration Module (`config.py`)**  
    - [ ] **Define Portfolio Parameters and Global Variables**  
@@ -158,7 +158,7 @@
        - [ ] All tickers in `LONG_TICKERS`, `SHORT_TICKERS`, and the `MARKET_INDEX`.
      - [ ] Retrieve or simulate USD/CAD exchange rates.
      - [ ] Initialize the portfolio:
-       - [ ] Use the first available day’s prices to compute the number of shares for each ticker via `initialize_portfolio`.
+       - [ ] Use the first available day's prices to compute the number of shares for each ticker via `initialize_portfolio`.
      - [ ] Compute initial betas for each ticker:
        - [ ] Calculate returns for each ticker and the market index.
        - [ ] Use `compute_beta` to estimate betas.
@@ -168,7 +168,7 @@
      - [ ] Export detailed performance data to an Excel file:
        - [ ] Call `export_to_excel`.
    - [ ] **Error Handling and Logging**  
-     - [ ] Integrate Python’s `logging` module to record events, errors, and rebalancing triggers.
+     - [ ] Integrate Python's `logging` module to record events, errors, and rebalancing triggers.
      - [ ] Use try/except blocks where necessary (e.g., during data downloads or calculations).
 
 8. **Documentation, Testing, and Quality Assurance**  
