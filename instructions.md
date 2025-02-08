@@ -188,9 +188,9 @@
        - [ ] Instructions on how to change the analysis period and other parameters.
    - [ ] **Unit Testing at Each Step**  
      - [ ] Ensure that each module has its corresponding test file in the `tests/` folder.
-     - [ ] Run unit tests frequently during development to catch errors early.
+     - [ ] Run the unit tests to catch and fix any errors.
    - [ ] **Integration Testing**  
-     - [ ] Develop and run integration tests to verify that different modules work together as expected.
+     - [ ] Run the integration tests to verify that different modules work together as expected.
      - [ ] Document the testing procedures in the `README.md` or a dedicated testing documentation file.
    - [ ] **Code Quality**  
      - [ ] Ensure adherence to PEP 8 style guidelines.
