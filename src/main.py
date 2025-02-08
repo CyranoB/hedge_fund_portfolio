@@ -8,15 +8,41 @@ import os
 from datetime import datetime, timedelta
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.logging import RichHandler
+import atexit
+import shutil
+import glob
 
 from src.config import load_config
-from src.data_acquisition import download_market_data, get_exchange_rates
-from src.portfolio import initialize_portfolio, rebalance_portfolio
-from src.performance import calculate_daily_returns, simulate_portfolio
-from src.reporting import generate_monthly_report, export_to_excel
+from src.data_acquisition import (
+    download_market_data,
+    get_exchange_rates,
+    get_date_range,
+    validate_market_data
+)
+from src.portfolio import (
+    initialize_portfolio,
+    rebalance_portfolio,
+    compute_beta
+)
+from src.performance import (
+    calculate_daily_returns,
+    simulate_portfolio
+)
+from src.reporting import (
+    generate_monthly_report,
+    export_to_excel
+)
 
 def setup_logging(log_file="hedge_fund_simulation.log"):
-    """Set up logging configuration."""
+    """
+    Set up logging configuration with both file and console handlers.
+    
+    Args:
+        log_file (str): Path to the log file
+    
+    Returns:
+        logging.Logger: Configured logger instance
+    """
     # Create the logs directory if it doesn't exist
     os.makedirs(os.path.dirname(log_file) if os.path.dirname(log_file) else '.', exist_ok=True)
     
@@ -26,7 +52,7 @@ def setup_logging(log_file="hedge_fund_simulation.log"):
         for handler in root.handlers:
             root.removeHandler(handler)
     
-    # Create and configure file handler first
+    # Create and configure file handler
     file_handler = logging.FileHandler(log_file, mode="w")
     file_handler.setFormatter(logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -45,27 +71,66 @@ def setup_logging(log_file="hedge_fund_simulation.log"):
     # Get logger for this module
     logger = logging.getLogger(__name__)
     
-    # Log initial message
-    logger.info("Starting hedge fund portfolio simulation...")
-    
     return logger
 
+def cleanup_temp_files():
+    """Clean up any temporary files created during simulation."""
+    temp_patterns = [
+        "*.tmp",
+        "*.temp",
+        "*_temp.*"
+    ]
+    for pattern in temp_patterns:
+        for file in glob.glob(pattern):
+            try:
+                os.remove(file)
+            except Exception as e:
+                logging.warning(f"Failed to remove temporary file {file}: {e}")
+
 def run_simulation():
-    """Run the complete hedge fund portfolio simulation."""
+    """
+    Run the complete hedge fund portfolio simulation.
+    
+    This function orchestrates the entire simulation workflow:
+    1. Loads configuration
+    2. Downloads market data
+    3. Initializes portfolio
+    4. Runs daily simulation
+    5. Generates reports
+    
+    Returns:
+        pd.DataFrame: Daily simulation results
+    
+    Raises:
+        ValueError: If market data validation fails
+        RuntimeError: If simulation fails
+    """
     try:
-        # Set up logging
+        # Set up logging and cleanup
         logger = setup_logging()
+        atexit.register(cleanup_temp_files)
         
         # Load configuration
+        logger.info("Loading configuration...")
         config = load_config()
         
-        # Set up date range
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=365)
+        # Create output directories
+        os.makedirs("data", exist_ok=True)
+        os.makedirs("docs", exist_ok=True)
         
-        # Convert dates to string format
-        start_date_str = start_date.strftime('%Y-%m-%d')
-        end_date_str = end_date.strftime('%Y-%m-%d')
+        # Get date range for analysis
+        logger.info("Calculating analysis period...")
+        start_date, end_date = get_date_range(
+            config.get("analysis_year", 2024),
+            config.get("analysis_month", 1)
+        )
+        
+        # Combine all tickers
+        all_tickers = (
+            config["tickers_long"] +
+            config["tickers_short"] +
+            [config["market_index"]]
+        )
         
         with Progress(
             SpinnerColumn(),
@@ -75,20 +140,32 @@ def run_simulation():
             # Download market data
             progress.add_task("Downloading market data...", total=None)
             logger.info("Downloading market data...")
-            market_data = download_market_data(config["tickers"], start_date_str, end_date_str)
+            market_data = download_market_data(all_tickers, start_date, end_date)
             
-            # Debug: Print the columns of market_data to verify structure
-            print("market_data columns:", market_data.columns)
+            # Validate market data
+            if not validate_market_data(market_data):
+                raise ValueError("Market data validation failed")
             
             # Get exchange rates
             progress.add_task("Retrieving exchange rates...", total=None)
             logger.info("Retrieving exchange rates...")
-            exchange_rates = get_exchange_rates(start_date_str, end_date_str)
+            exchange_rates = get_exchange_rates(start_date, end_date)
             
-            # Calculate daily returns and betas
-            progress.add_task("Calculating returns and betas...", total=None)
-            logger.info("Calculating returns and betas...")
+            # Calculate daily returns
+            progress.add_task("Calculating returns...", total=None)
+            logger.info("Calculating daily returns...")
             daily_returns = calculate_daily_returns(market_data)
+            
+            # Calculate betas for each ticker
+            logger.info("Computing initial betas...")
+            market_returns = daily_returns[config["market_index"]]
+            betas = {}
+            for ticker in all_tickers:
+                if ticker != config["market_index"]:
+                    betas[ticker] = compute_beta(
+                        daily_returns[ticker],
+                        market_returns
+                    )
             
             # Initialize portfolio
             progress.add_task("Initializing portfolio...", total=None)
@@ -100,15 +177,11 @@ def run_simulation():
                 config["tickers_short"]
             )
             
-            # Use the market_data directly as close prices
-            # (download_market_data already extracts the close prices)
-            close_prices = market_data
-            
             # Run portfolio simulation
             progress.add_task("Simulating portfolio...", total=None)
             logger.info("Simulating portfolio performance...")
             simulation_results = simulate_portfolio(
-                close_prices,
+                market_data,
                 portfolio,
                 daily_returns,
                 exchange_rates,
@@ -120,13 +193,10 @@ def run_simulation():
             progress.add_task("Generating reports...", total=None)
             logger.info("Generating reports...")
             
-            # Create docs directory if it doesn't exist
-            os.makedirs("docs", exist_ok=True)
-            
             generate_monthly_report(
                 simulation_results,
                 portfolio,
-                daily_returns,
+                betas,
                 os.path.join("docs", "monthly_report.pdf")
             )
             
@@ -139,7 +209,7 @@ def run_simulation():
             return simulation_results
             
     except Exception as e:
-        logging.error(f"Error during simulation: {str(e)}")  # Use root logger for error
+        logger.error(f"Error during simulation: {str(e)}")
         raise
 
 if __name__ == "__main__":

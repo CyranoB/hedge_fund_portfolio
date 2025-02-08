@@ -149,27 +149,33 @@
        - [x] Saves the Excel file with the given filename.
 
 7. **Implement Main Application Logic (`main.py`)**  
-   - [ ] **Integrate All Modules**  
-     - [ ] Import configuration from `config.py`.
-     - [ ] Import functions from `data_acquisition.py`, `portfolio.py`, `performance.py`, and `reporting.py`.
-   - [ ] **Main Execution Workflow**  
-     - [ ] Retrieve the analysis period by calling `get_date_range(ANALYSIS_YEAR, ANALYSIS_MONTH)`.
-     - [ ] Download market data for:
-       - [ ] All tickers in `LONG_TICKERS`, `SHORT_TICKERS`, and the `MARKET_INDEX`.
-     - [ ] Retrieve or simulate USD/CAD exchange rates.
-     - [ ] Initialize the portfolio:
-       - [ ] Use the first available day's prices to compute the number of shares for each ticker via `initialize_portfolio`.
-     - [ ] Compute initial betas for each ticker:
-       - [ ] Calculate returns for each ticker and the market index.
-       - [ ] Use `compute_beta` to estimate betas.
-     - [ ] Run the daily simulation by calling `simulate_portfolio` with all required parameters.
-     - [ ] Generate the monthly report:
-       - [ ] Call `generate_monthly_report` with the simulation results.
-     - [ ] Export detailed performance data to an Excel file:
-       - [ ] Call `export_to_excel`.
-   - [ ] **Error Handling and Logging**  
-     - [ ] Integrate Python's `logging` module to record events, errors, and rebalancing triggers.
-     - [ ] Use try/except blocks where necessary (e.g., during data downloads or calculations).
+   - [x] **Integrate All Modules**  
+     - [x] Import configuration from `config.py`.
+     - [x] Import functions from `data_acquisition.py`, `portfolio.py`, `performance.py`, and `reporting.py`.
+   - [x] **Main Execution Workflow**  
+     - [x] Retrieve the analysis period by calling `get_date_range(ANALYSIS_YEAR, ANALYSIS_MONTH)`.
+     - [x] Download market data for:
+       - [x] All tickers in `LONG_TICKERS`, `SHORT_TICKERS`, and the `MARKET_INDEX`.
+     - [x] Retrieve or simulate USD/CAD exchange rates.
+     - [x] Initialize the portfolio:
+       - [x] Use the first available day's prices to compute the number of shares for each ticker via `initialize_portfolio`.
+     - [x] Compute initial betas for each ticker:
+       - [x] Calculate returns for each ticker and the market index.
+       - [x] Use `compute_beta` to estimate betas.
+     - [x] Run the daily simulation by calling `simulate_portfolio` with all required parameters.
+     - [x] Generate the monthly report:
+       - [x] Call `generate_monthly_report` with the simulation results.
+     - [x] Export detailed performance data to an Excel file:
+       - [x] Call `export_to_excel`.
+   - [x] **Error Handling and Logging**  
+     - [x] Integrate Python's `logging` module to record events, errors, and rebalancing triggers.
+     - [x] Use try/except blocks where necessary (e.g., during data downloads or calculations).
+   - [x] **Unit Tests for Main Application Functions**  
+     - [x] In `tests/test_main.py`, add tests that simulate parts of the main workflow using mocks or sample data.
+   - [x] **Integration Tests for the Full Application**  
+     - [x] Create an integration test (e.g., in `tests/integration/test_full_flow.py`) that:
+       - [x] Executes `main.py` end-to-end (with a limited dataset for speed).
+       - [x] Verifies that all modules interact correctly and that final outputs (PDF, Excel, logs) are generated.
 
 8. **Documentation, Testing, and Quality Assurance**  
    - [ ] **Documentation**  
