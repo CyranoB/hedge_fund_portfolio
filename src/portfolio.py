@@ -189,12 +189,12 @@ def rebalance_portfolio(
             
             # Calculate adjustment factor based on beta deviation
             beta_deviation = target_beta - current_beta
-            # Use smaller adjustment steps for more precise convergence
-            beta_adjustment = beta_deviation * 0.1  # Reduced adjustment factor
+            # Use more aggressive adjustment for faster convergence
+            beta_adjustment = beta_deviation * 0.5  # Increased adjustment factor
             progress.update(task, advance=20)
             
             # Adjust positions iteratively
-            max_iterations = 10
+            max_iterations = 20  # Increased max iterations
             iteration = 0
             new_portfolio = current_portfolio.copy()
             total_adjustment = 0
@@ -225,9 +225,10 @@ def rebalance_portfolio(
                 if abs(new_beta - target_beta) <= tolerance:
                     break
                 
-                # Update adjustment factor
+                # Update adjustment factor with damping
                 beta_deviation = target_beta - new_beta
-                beta_adjustment = beta_deviation * 0.1
+                damping_factor = max(0.1, 1.0 - iteration/max_iterations)  # Gradually reduce adjustments
+                beta_adjustment = beta_deviation * 0.5 * damping_factor
                 iteration += 1
             
             progress.update(task, advance=40)
