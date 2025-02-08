@@ -88,9 +88,10 @@ def download_market_data(
             
             progress.update(task, completed=True)
         
-        # Extract adjusted close prices
+        # Extract close prices
         if len(tickers) == 1:
-            prices = df['Close'].to_frame(tickers[0])
+            # For single ticker, create a DataFrame with the ticker as column name
+            prices = pd.DataFrame(df['Close'], columns=tickers)
         else:
             prices = df['Close']
         
