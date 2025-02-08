@@ -143,12 +143,14 @@ def test_rebalance_portfolio():
     assert abs(new_beta) < 0.05  # Should be within tolerance
     
     # Test with custom target beta and tolerance
+    target_beta = 0.5
+    tolerance = 0.2
     new_portfolio, costs = rebalance_portfolio(
         current_portfolio,
         day_prices,
         betas,
-        target_beta=0.5,
-        tolerance=0.2
+        target_beta=target_beta,
+        tolerance=tolerance
     )
     
     new_positions = {
@@ -157,5 +159,6 @@ def test_rebalance_portfolio():
     }
     new_beta = compute_portfolio_beta(new_positions, betas)
     
-    # With fixed values, we can be more precise in our assertions
-    assert abs(new_beta - 0.5) < 0.2 
+    # Check if the new beta is within tolerance of target
+    assert abs(new_beta - target_beta) <= tolerance, \
+        f"Portfolio beta {new_beta:.4f} should be within {tolerance} of target {target_beta}" 
