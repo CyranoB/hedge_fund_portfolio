@@ -10,7 +10,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 from rich.console import Console
-from typing import Dict, List
+from typing import Dict, List, Union
 import logging
 import os
 
@@ -25,7 +25,7 @@ console = Console()
 def generate_monthly_report(
     daily_results: pd.DataFrame,
     portfolio: Dict[str, float],
-    beta_dict: Dict[str, float],
+    beta_dict: Union[pd.DataFrame, Dict[str, float]],
     output_path: str = "docs/monthly_report.pdf"
 ) -> None:
     """
@@ -34,7 +34,7 @@ def generate_monthly_report(
     Args:
         daily_results (pd.DataFrame): Daily portfolio performance results
         portfolio (Dict[str, float]): Final portfolio positions
-        beta_dict (Dict[str, float]): Beta values for each ticker
+        beta_dict (Union[pd.DataFrame, Dict[str, float]]): Beta values for each ticker
         output_path (str): Path to save the PDF report
     """
     try:
@@ -81,12 +81,18 @@ def generate_monthly_report(
             long_positions = {k: v for k, v in portfolio.items() if v > 0}
             short_positions = {k: v for k, v in portfolio.items() if v < 0}
             
+            # Get the beta values
+            if isinstance(beta_dict, pd.DataFrame):
+                latest_betas = beta_dict.iloc[-1]
+            else:
+                latest_betas = beta_dict
+            
             # Create tables for long and short positions
             position_data = [["Position Type", "Ticker", "Shares", "Beta"]]
             for ticker, shares in long_positions.items():
-                position_data.append(["Long", ticker, f"{shares:.0f}", f"{beta_dict[ticker]:.2f}"])
+                position_data.append(["Long", ticker, f"{shares:.0f}", f"{latest_betas[ticker]:.2f}"])
             for ticker, shares in short_positions.items():
-                position_data.append(["Short", ticker, f"{shares:.0f}", f"{beta_dict[ticker]:.2f}"])
+                position_data.append(["Short", ticker, f"{shares:.0f}", f"{latest_betas[ticker]:.2f}"])
             
             position_table = Table(position_data)
             position_table.setStyle(TableStyle([

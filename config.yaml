@@ -1,0 +1,17 @@
+initial_capital: 1000000
+management_fee: 0.02
+rebalancing_threshold: 0.1
+target_beta: 0.8
+tickers:
+- AAPL
+- MSFT
+- GOOGL
+- AMZN
+- META
+- XOM
+- CVX
+- COP
+- SLB
+- EOG
+- ^GSPC
+transaction_cost: 0.001

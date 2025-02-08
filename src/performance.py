@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 from rich.console import Console
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Union
 import logging
 
 from src.portfolio import compute_portfolio_beta, rebalance_portfolio
@@ -50,9 +50,9 @@ def calculate_daily_returns(prices: pd.DataFrame) -> pd.DataFrame:
 def simulate_portfolio(
     daily_prices: pd.DataFrame,
     portfolio: Dict[str, float],
-    betas: Dict[str, float],
-    market_returns: pd.Series,
+    daily_returns: Union[pd.DataFrame, Dict[str, float]],
     exchange_rates: pd.Series,
+    management_fee: Union[float, pd.Series],
     target_beta: float = 0
 ) -> pd.DataFrame:
     """
@@ -61,9 +61,9 @@ def simulate_portfolio(
     Args:
         daily_prices (pd.DataFrame): Daily prices for all tickers
         portfolio (Dict[str, float]): Initial portfolio positions
-        betas (Dict[str, float]): Beta values for each ticker
-        market_returns (pd.Series): Daily market index returns
+        daily_returns (Union[pd.DataFrame, Dict[str, float]]): Daily returns for each ticker
         exchange_rates (pd.Series): Daily USD/CAD exchange rates
+        management_fee (Union[float, pd.Series]): Annual management fee rate or series
         target_beta (float): Target portfolio beta
     
     Returns:
@@ -82,6 +82,24 @@ def simulate_portfolio(
             results = []
             current_portfolio = portfolio.copy()
             
+            # Convert daily_returns to DataFrame if it's a dictionary
+            if isinstance(daily_returns, dict):
+                betas = daily_returns
+            else:
+                # Calculate betas for each ticker using the entire period
+                # Find the market index column (either '^GSPC' or the last column)
+                market_col = '^GSPC' if '^GSPC' in daily_returns.columns else daily_returns.columns[-1]
+                market_returns = daily_returns[market_col]
+                betas = {}
+                for ticker in daily_returns.columns:
+                    if ticker != market_col:
+                        stock_returns = daily_returns[ticker]
+                        betas[ticker] = compute_beta(stock_returns, market_returns)
+            
+            # Convert management_fee to float if it's a Series
+            if isinstance(management_fee, pd.Series):
+                management_fee = management_fee.iloc[0]
+            
             # Simulate each day
             for date, prices in daily_prices.iterrows():
                 # Calculate current position values and portfolio metrics
@@ -90,7 +108,7 @@ def simulate_portfolio(
                     for ticker, shares in current_portfolio.items()
                 }
                 
-                portfolio_value_usd = sum(positions.values())
+                portfolio_value_usd = abs(sum(positions.values()))  # Use absolute value for total portfolio value
                 portfolio_beta = compute_portfolio_beta(positions, betas)
                 
                 # Check if rebalancing is needed
@@ -106,7 +124,7 @@ def simulate_portfolio(
                     rebalanced = True
                 
                 # Calculate daily management fee
-                daily_fee = (MANAGEMENT_FEE_ANNUAL / 252) * portfolio_value_usd
+                daily_fee = (management_fee / 252) * portfolio_value_usd
                 
                 # Convert to CAD
                 portfolio_value_cad = portfolio_value_usd * exchange_rates[date]
@@ -133,7 +151,7 @@ def simulate_portfolio(
                 
                 # Deduct fees and transaction costs from portfolio value
                 total_costs = daily_fee + transaction_costs
-                if total_costs > 0:
+                if float(total_costs) > 0:
                     cost_ratio = total_costs / portfolio_value_usd
                     for ticker in current_portfolio:
                         current_portfolio[ticker] *= (1 - cost_ratio)
@@ -141,12 +159,31 @@ def simulate_portfolio(
                 progress.update(task, advance=1)
             
             # Convert results to DataFrame
-            results_df = pd.DataFrame(results)
-            results_df.set_index('date', inplace=True)
+            return pd.DataFrame(results).set_index('date')
             
-            logger.info("Portfolio simulation completed successfully")
-            return results_df
-    
     except Exception as e:
         logger.error(f"Error simulating portfolio: {str(e)}")
+        raise
+
+def compute_beta(stock_returns: pd.Series, market_returns: pd.Series) -> float:
+    """
+    Calculate beta coefficient using covariance method.
+    
+    Args:
+        stock_returns (pd.Series): Daily returns for a stock
+        market_returns (pd.Series): Daily returns for the market index
+    
+    Returns:
+        float: Beta coefficient
+    """
+    try:
+        # Calculate beta using covariance method
+        covariance = stock_returns.cov(market_returns)
+        market_variance = market_returns.var()
+        beta = covariance / market_variance if market_variance != 0 else 0
+        
+        return beta
+    
+    except Exception as e:
+        logger.error(f"Error computing beta: {str(e)}")
         raise

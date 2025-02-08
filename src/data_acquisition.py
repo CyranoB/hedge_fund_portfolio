@@ -50,11 +50,7 @@ def get_date_range(year: int, month: int) -> Tuple[str, str]:
         logger.error(f"Error generating date range: {str(e)}")
         raise
 
-def download_market_data(
-    tickers: List[str],
-    start_date: str,
-    end_date: str
-) -> pd.DataFrame:
+def download_market_data(tickers: List[str], start_date: str, end_date: str) -> pd.DataFrame:
     """
     Download historical adjusted close prices for given tickers.
     
@@ -64,7 +60,8 @@ def download_market_data(
         end_date (str): End date in 'YYYY-MM-DD' format
     
     Returns:
-        pd.DataFrame: DataFrame with daily adjusted close prices
+        pd.DataFrame: DataFrame with daily adjusted close prices indexed by date.
+                    The columns will be named after the tickers.
     """
     try:
         with Progress(
@@ -76,34 +73,48 @@ def download_market_data(
                 f"[green]Downloading data for {len(tickers)} tickers...",
                 total=None
             )
-            
-            # Download data using yfinance
             df = yf.download(
                 tickers,
                 start=start_date,
                 end=end_date,
                 progress=False,
-                group_by='column'
+                group_by='ticker'
             )
-            
             progress.update(task, completed=True)
-        
-        # Extract close prices
-        if len(tickers) == 1:
-            # For single ticker, create a DataFrame with the ticker as column name
-            prices = pd.DataFrame(df['Close'], columns=tickers)
-        else:
-            prices = df['Close']
-        
-        # Handle missing data
+
+        if df.empty:
+            raise ValueError("No market data downloaded for given tickers and date range")
+
+        # Handle single ticker case
+        if not isinstance(df.columns, pd.MultiIndex):
+            if 'Adj Close' in df.columns:
+                return pd.DataFrame(df['Adj Close'])
+            elif 'Close' in df.columns:
+                return pd.DataFrame(df['Close'])
+            else:
+                raise KeyError("Neither 'Close' nor 'Adj Close' found in DataFrame columns")
+
+        # Handle multiple tickers case
+        prices = pd.DataFrame()
+        for ticker in tickers:
+            if ('Adj Close' in df[ticker].columns):
+                prices[ticker] = df[ticker]['Adj Close']
+            elif ('Close' in df[ticker].columns):
+                prices[ticker] = df[ticker]['Close']
+            else:
+                logger.warning(f"No price data found for {ticker}")
+
+        if prices.empty:
+            raise ValueError("No valid price data found for any ticker")
+
+        # Handle any missing values
         if prices.isnull().any().any():
             logger.warning("Missing values detected in downloaded data")
-            # Forward fill, then backward fill any remaining NAs
             prices = prices.fillna(method='ffill').fillna(method='bfill')
-        
+
         logger.info(f"Successfully downloaded data for {len(tickers)} tickers")
         return prices
-    
+
     except Exception as e:
         logger.error(f"Error downloading market data: {str(e)}")
         raise

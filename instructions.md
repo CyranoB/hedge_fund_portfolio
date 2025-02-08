@@ -180,12 +180,12 @@
        - [ ] Installation instructions.
        - [ ] Usage guidelines.
        - [ ] Instructions on how to change the analysis period and other parameters.
-   - [ ] **Unit Testing**  
-     - [ ] Create unit tests in the `tests/` directory for:
-       - [ ] The `compute_beta` function (with sample data).
-       - [ ] Portfolio initialization (checking correct share allocation).
-       - [ ] The simulation function (ensuring expected DataFrame structure and values).
-       - [ ] Rebalancing logic (ensuring beta neutrality is restored when triggered).
+   - [ ] **Unit Testing at Each Step**  
+     - [ ] Ensure that each module has its corresponding test file in the `tests/` folder.
+     - [ ] Run unit tests frequently during development to catch errors early.
+   - [ ] **Integration Testing**  
+     - [ ] Develop and run integration tests to verify that different modules work together as expected.
+     - [ ] Document the testing procedures in the `README.md` or a dedicated testing documentation file.
    - [ ] **Code Quality**  
      - [ ] Ensure adherence to PEP 8 style guidelines.
-     - [ ] Run static analysis tools (like `
+     - [ ] Run static analysis tools (like `flake8` or `pylint`) to verify code quality.

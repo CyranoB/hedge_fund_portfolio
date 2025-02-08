@@ -67,8 +67,9 @@ def compute_portfolio_beta(positions: Dict[str, float], betas: Dict[str, float])
         
         # Calculate weighted average beta
         weighted_beta = sum(
-            positions[ticker] * betas[ticker] / total_exposure
+            positions[ticker] * betas.get(ticker, 0) / total_exposure
             for ticker in positions
+            if ticker in betas  # Only include tickers that have beta values
         )
         
         logger.debug(f"Computed portfolio beta: {weighted_beta:.4f}")
