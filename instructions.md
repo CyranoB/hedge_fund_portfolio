@@ -36,7 +36,7 @@
        - [x] `LONG_TICKERS = ['AAPL', 'MSFT', 'AMZN', 'JNJ', 'WMT']`
      - [x] For short positions, add the following tickers:
        - [x] `SHORT_TICKERS = ['TSLA', 'META', 'SHOP', 'NVDA', 'BA']`
-     - [x] Specify the market index ticker:
+       - [x] Specify the market index ticker:
        - [x] `MARKET_INDEX = '^GSPC'`
    - [x] **Define Fee Parameters**  
      - [x] Set annual management fee:
@@ -73,32 +73,32 @@
      - [x] Align all datasets by date.
 
 4. **Implement Portfolio Module (`portfolio.py`)**  
-   - [ ] **Import Required Libraries**  
-     - [ ] Import `numpy`, `pandas`, and `statsmodels.api` for regression analysis.
-   - [ ] **Implement Beta Calculation for Individual Stocks**  
-     - [ ] Create function `compute_beta(stock_returns, market_returns)` that:
-       - [ ] Accepts two `Series`: one for stock returns and one for market returns.
-       - [ ] Uses OLS regression (via `statsmodels`) to compute beta.
-       - [ ] Returns the beta coefficient.
-   - [ ] **Implement Portfolio Beta Calculation**  
-     - [ ] Create function `compute_portfolio_beta(positions, betas)` that:
-       - [ ] Accepts a dictionary of positions (ticker: position value) and a dictionary of individual betas.
-       - [ ] Computes a weighted average beta (using absolute position exposures for normalization).
-       - [ ] Returns the aggregated portfolio beta.
-   - [ ] **Initialize the Portfolio**  
-     - [ ] Create function `initialize_portfolio(initial_capital, prices, tickers_long, tickers_short)` that:
-       - [ ] Splits the capital equally for long and short positions.
-       - [ ] Calculates dollar allocation per ticker for each group.
-       - [ ] Divides the allocated capital by the initial price of each ticker to get the number of shares.
-       - [ ] For short positions, assign a negative number of shares.
-       - [ ] Returns a dictionary mapping each ticker to its number of shares.
-   - [ ] **Implement Portfolio Rebalancing Logic**  
-     - [ ] Create function `rebalance_portfolio(current_portfolio, day_prices, betas)` that:
-       - [ ] Checks if the portfolio beta deviates beyond `BETA_TOLERANCE`.
-       - [ ] Recalculates the desired weights to achieve beta neutrality.
-       - [ ] Adjusts the number of shares for each ticker accordingly.
-       - [ ] Calculates and logs transaction fees based on `TRANSACTION_FEE_PER_SHARE`.
-       - [ ] Returns the updated portfolio along with any transaction cost details.
+   - [x] **Import Required Libraries**  
+     - [x] Import `numpy`, `pandas`, and `statsmodels.api` for regression analysis.
+   - [x] **Implement Beta Calculation for Individual Stocks**  
+     - [x] Create function `compute_beta(stock_returns, market_returns)` that:
+       - [x] Accepts two `Series`: one for stock returns and one for market returns.
+       - [x] Uses OLS regression (via `statsmodels`) to compute beta.
+       - [x] Returns the beta coefficient.
+   - [x] **Implement Portfolio Beta Calculation**  
+     - [x] Create function `compute_portfolio_beta(positions, betas)` that:
+       - [x] Accepts a dictionary of positions (ticker: position value) and a dictionary of individual betas.
+       - [x] Computes a weighted average beta (using absolute position exposures for normalization).
+       - [x] Returns the aggregated portfolio beta.
+   - [x] **Initialize the Portfolio**  
+     - [x] Create function `initialize_portfolio(initial_capital, prices, tickers_long, tickers_short)` that:
+       - [x] Splits the capital equally for long and short positions.
+       - [x] Calculates dollar allocation per ticker for each group.
+       - [x] Divides the allocated capital by the initial price of each ticker to get the number of shares.
+       - [x] For short positions, assign a negative number of shares.
+       - [x] Returns a dictionary mapping each ticker to its number of shares.
+   - [x] **Implement Portfolio Rebalancing Logic**  
+     - [x] Create function `rebalance_portfolio(current_portfolio, day_prices, betas)` that:
+       - [x] Checks if the portfolio beta deviates beyond `BETA_TOLERANCE`.
+       - [x] Recalculates the desired weights to achieve beta neutrality.
+       - [x] Adjusts the number of shares for each ticker accordingly.
+       - [x] Calculates and logs transaction fees based on `TRANSACTION_FEE_PER_SHARE`.
+       - [x] Returns the updated portfolio along with any transaction cost details.
 
 5. **Implement Performance Module (`performance.py`)**  
    - [ ] **Import Required Libraries**  
