@@ -193,16 +193,17 @@ def rebalance_portfolio(
             # Calculate total long and short exposures
             long_exposure = sum(positions[t] for t in long_positions)
             short_exposure = abs(sum(positions[t] for t in short_positions))
+            total_exposure = long_exposure + short_exposure
             
-            # Calculate required adjustment to reach target beta
-            if target_beta > current_beta:
-                # Need to increase beta: increase long positions, decrease short positions
-                long_adjustment = beta_deviation * (long_exposure + short_exposure) * 0.6  # Proportional adjustment
-                short_adjustment = -beta_deviation * (long_exposure + short_exposure) * 0.4
+            # Calculate target exposures to achieve desired beta
+            if target_beta >= 0:
+                # For positive target beta, increase long exposure relative to short
+                target_long_ratio = (1 + target_beta) / 2
+                target_short_ratio = (1 - target_beta) / 2
             else:
-                # Need to decrease beta: decrease long positions, increase short positions
-                long_adjustment = beta_deviation * (long_exposure + short_exposure) * 0.4
-                short_adjustment = -beta_deviation * (long_exposure + short_exposure) * 0.6
+                # For negative target beta, increase short exposure relative to long
+                target_long_ratio = (1 + target_beta) / 2
+                target_short_ratio = (1 - target_beta) / 2
             
             progress.update(task, advance=20)
             
@@ -215,25 +216,34 @@ def rebalance_portfolio(
             best_beta_diff = float('inf')
             
             while iteration < max_iterations:
-                # Adjust long positions proportionally
-                if long_positions:
-                    long_adj_per_position = long_adjustment / len(long_positions)
-                    for ticker in long_positions:
-                        position_beta = betas[ticker]
-                        adj_factor = long_adj_per_position / (position_beta * day_prices[ticker])
-                        new_shares = new_portfolio[ticker] * (1 + adj_factor)
-                        total_adjustment += abs(new_shares - new_portfolio[ticker])
-                        new_portfolio[ticker] = new_shares
+                # Calculate current exposures
+                current_positions = {
+                    ticker: shares * day_prices[ticker]
+                    for ticker, shares in new_portfolio.items()
+                }
+                current_long = sum(pos for pos in current_positions.values() if pos > 0)
+                current_short = abs(sum(pos for pos in current_positions.values() if pos < 0))
+                current_total = current_long + current_short
                 
-                # Adjust short positions proportionally
-                if short_positions:
-                    short_adj_per_position = short_adjustment / len(short_positions)
-                    for ticker in short_positions:
-                        position_beta = betas[ticker]
-                        adj_factor = short_adj_per_position / (position_beta * day_prices[ticker])
-                        new_shares = new_portfolio[ticker] * (1 + adj_factor)
-                        total_adjustment += abs(new_shares - new_portfolio[ticker])
-                        new_portfolio[ticker] = new_shares
+                # Calculate scaling factors
+                long_scale = (target_long_ratio * total_exposure) / current_long if current_long > 0 else 1
+                short_scale = (target_short_ratio * total_exposure) / current_short if current_short > 0 else 1
+                
+                # Apply damping
+                damping = max(0.2, 1.0 - iteration/max_iterations)
+                long_scale = 1 + (long_scale - 1) * damping
+                short_scale = 1 + (short_scale - 1) * damping
+                
+                # Scale positions
+                for ticker in long_positions:
+                    new_shares = new_portfolio[ticker] * long_scale
+                    total_adjustment += abs(new_shares - new_portfolio[ticker])
+                    new_portfolio[ticker] = new_shares
+                
+                for ticker in short_positions:
+                    new_shares = new_portfolio[ticker] * short_scale
+                    total_adjustment += abs(new_shares - new_portfolio[ticker])
+                    new_portfolio[ticker] = new_shares
                 
                 # Calculate new beta
                 new_positions = {
@@ -252,15 +262,14 @@ def rebalance_portfolio(
                 if current_beta_diff <= tolerance:
                     break
                 
-                # Update adjustments based on remaining deviation
+                # Update target ratios based on remaining deviation
                 beta_deviation = target_beta - new_beta
-                damping = max(0.3, 1.0 - iteration/max_iterations)
-                if target_beta > new_beta:
-                    long_adjustment = beta_deviation * (long_exposure + short_exposure) * 0.6 * damping
-                    short_adjustment = -beta_deviation * (long_exposure + short_exposure) * 0.4 * damping
+                if target_beta >= 0:
+                    target_long_ratio = (1 + target_beta + beta_deviation * damping) / 2
+                    target_short_ratio = (1 - target_beta - beta_deviation * damping) / 2
                 else:
-                    long_adjustment = beta_deviation * (long_exposure + short_exposure) * 0.4 * damping
-                    short_adjustment = -beta_deviation * (long_exposure + short_exposure) * 0.6 * damping
+                    target_long_ratio = (1 + target_beta + beta_deviation * damping) / 2
+                    target_short_ratio = (1 - target_beta - beta_deviation * damping) / 2
                 
                 iteration += 1
             
