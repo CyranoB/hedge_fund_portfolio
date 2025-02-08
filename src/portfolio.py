@@ -39,7 +39,7 @@ def compute_beta(stock_returns: pd.Series, market_returns: pd.Series) -> float:
         results = model.fit()
         
         # Extract beta (slope coefficient)
-        beta = results.params[1]
+        beta = float(results.params.iloc[1])  # Changed to use iloc instead of index
         
         logger.debug(f"Computed beta: {beta:.4f}")
         return beta

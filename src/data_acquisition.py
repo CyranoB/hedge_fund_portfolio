@@ -90,9 +90,9 @@ def download_market_data(
         
         # Extract adjusted close prices
         if len(tickers) == 1:
-            prices = df['Adj Close'].to_frame(tickers[0])
+            prices = df['Close'].to_frame(tickers[0])
         else:
-            prices = df['Adj Close']
+            prices = df['Close']
         
         # Handle missing data
         if prices.isnull().any().any():
