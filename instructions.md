@@ -26,29 +26,29 @@
      - [x] Create a `README.md` file outlining project goals, setup instructions, and usage.
 
 2. **Implement Configuration Module (`config.py`)**  
-   - [ ] **Define Portfolio Parameters and Global Variables**  
-     - [ ] Set the initial capital:
-       - [ ] `INITIAL_CAPITAL_USD = 10_000_000`
-     - [ ] Define portfolio exposure:
-       - [ ] `GROSS_EXPOSURE = 10_000_000`
-   - [ ] **Define Ticker Lists**  
-     - [ ] For long positions, add the following tickers:
-       - [ ] `LONG_TICKERS = ['AAPL', 'MSFT', 'AMZN', 'JNJ', 'WMT']`
-     - [ ] For short positions, add the following tickers:
-       - [ ] `SHORT_TICKERS = ['TSLA', 'META', 'SHOP', 'NVDA', 'BA']`
-     - [ ] Specify the market index ticker:
-       - [ ] `MARKET_INDEX = '^GSPC'`
-   - [ ] **Define Fee Parameters**  
-     - [ ] Set annual management fee:
-       - [ ] `MANAGEMENT_FEE_ANNUAL = 0.02`  (i.e., 2% per year)
-     - [ ] Set transaction fee per share:
-       - [ ] `TRANSACTION_FEE_PER_SHARE = 0.01`
-   - [ ] **Set the Analysis Period and Rebalancing Tolerance**  
-     - [ ] Define the month and year for simulation:
-       - [ ] `ANALYSIS_YEAR = 2025`
-       - [ ] `ANALYSIS_MONTH = 1`  (January)
-     - [ ] Set the beta tolerance threshold:
-       - [ ] `BETA_TOLERANCE = 0.05`
+   - [x] **Define Portfolio Parameters and Global Variables**  
+     - [x] Set the initial capital:
+       - [x] `INITIAL_CAPITAL_USD = 10_000_000`
+     - [x] Define portfolio exposure:
+       - [x] `GROSS_EXPOSURE = 10_000_000`
+   - [x] **Define Ticker Lists**  
+     - [x] For long positions, add the following tickers:
+       - [x] `LONG_TICKERS = ['AAPL', 'MSFT', 'AMZN', 'JNJ', 'WMT']`
+     - [x] For short positions, add the following tickers:
+       - [x] `SHORT_TICKERS = ['TSLA', 'META', 'SHOP', 'NVDA', 'BA']`
+     - [x] Specify the market index ticker:
+       - [x] `MARKET_INDEX = '^GSPC'`
+   - [x] **Define Fee Parameters**  
+     - [x] Set annual management fee:
+       - [x] `MANAGEMENT_FEE_ANNUAL = 0.02`  (i.e., 2% per year)
+     - [x] Set transaction fee per share:
+       - [x] `TRANSACTION_FEE_PER_SHARE = 0.01`
+   - [x] **Set the Analysis Period and Rebalancing Tolerance**  
+     - [x] Define the month and year for simulation:
+       - [x] `ANALYSIS_YEAR = 2025`
+       - [x] `ANALYSIS_MONTH = 1`  (January)
+     - [x] Set the beta tolerance threshold:
+       - [x] `BETA_TOLERANCE = 0.05`
 
 3. **Implement Data Acquisition Module (`data_acquisition.py`)**  
    - [ ] **Import Required Libraries**  
