@@ -126,27 +126,27 @@
        - [x] Return a DataFrame with daily simulation results.
 
 6. **Implement Reporting Module (`reporting.py`)**  
-   - [ ] **Import Required Libraries**  
-     - [ ] Import `pandas` for data export.
-     - [ ] Import `reportlab` (or an alternative) for PDF generation.
-     - [ ] (Optionally) Import `jinja2` if using templated reports.
-   - [ ] **Generate the Monthly Investor Letter (PDF Report)**  
-     - [ ] Create a function `generate_monthly_report(daily_results, portfolio, beta_dict)` that:
-       - [ ] Compiles a summary including:
-         - [ ] Introduction to the strategy.
-         - [ ] Justification of the selected long and short tickers.
-         - [ ] Summary of monthly performance in both USD and CAD.
-         - [ ] Evolution of portfolio beta (initial, daily changes, final beta).
-         - [ ] Details and rationale for any rebalancing events.
-         - [ ] Conclusion and outlook.
-       - [ ] Formats the report (using plain text, HTML, or a template).
-       - [ ] Converts the formatted report into a PDF file.
-   - [ ] **Export Detailed Performance Data to Excel**  
-     - [ ] Create a function `export_to_excel(daily_df, filename='portfolio_performance.xlsx')` that:
-       - [ ] Uses `pandas.ExcelWriter` to write:
-         - [ ] Daily performance data (date, USD/CAD values, beta, etc.) on one sheet.
-         - [ ] Additional sheets for rebalancing logs and beta calculations, if desired.
-       - [ ] Saves the Excel file with the given filename.
+   - [x] **Import Required Libraries**  
+     - [x] Import `pandas` for data export.
+     - [x] Import `reportlab` (or an alternative) for PDF generation.
+     - [x] (Optionally) Import `jinja2` if using templated reports.
+   - [x] **Generate the Monthly Investor Letter (PDF Report)**  
+     - [x] Create a function `generate_monthly_report(daily_results, portfolio, beta_dict)` that:
+       - [x] Compiles a summary including:
+         - [x] Introduction to the strategy.
+         - [x] Justification of the selected long and short tickers.
+         - [x] Summary of monthly performance in both USD and CAD.
+         - [x] Evolution of portfolio beta (initial, daily changes, final beta).
+         - [x] Details and rationale for any rebalancing events.
+         - [x] Conclusion and outlook.
+       - [x] Formats the report (using plain text, HTML, or a template).
+       - [x] Converts the formatted report into a PDF file.
+   - [x] **Export Detailed Performance Data to Excel**  
+     - [x] Create a function `export_to_excel(daily_df, filename='portfolio_performance.xlsx')` that:
+       - [x] Uses `pandas.ExcelWriter` to write:
+         - [x] Daily performance data (date, USD/CAD values, beta, etc.) on one sheet.
+         - [x] Additional sheets for rebalancing logs and beta calculations, if desired.
+       - [x] Saves the Excel file with the given filename.
 
 7. **Implement Main Application Logic (`main.py`)**  
    - [ ] **Integrate All Modules**  
