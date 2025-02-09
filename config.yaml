@@ -10,7 +10,7 @@ tickers_short:
   - META
   - SHOP
   - NVDA
-  - V
+  - BA
 market_index: "^GSPC"
 
 # Capital and Exposure

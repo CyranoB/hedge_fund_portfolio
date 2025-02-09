@@ -13,6 +13,14 @@ import pandas as pd
 import numpy as np
 from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.units import inch
+import markdown2
+from weasyprint import HTML, CSS
+from pygments.formatters import HtmlFormatter
 
 # Configure logging
 logging.basicConfig(
@@ -20,6 +28,108 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 console = Console()
+
+
+def markdown_to_pdf(markdown_content: str, pdf_path: str) -> None:
+    """
+    Convert markdown content to PDF using weasyprint with proper styling.
+    
+    Args:
+        markdown_content (str): Content in markdown format
+        pdf_path (str): Path to save the PDF file
+    """
+    # Convert markdown to HTML with extras for better formatting
+    html_content = markdown2.markdown(
+        markdown_content,
+        extras=[
+            "tables",
+            "fenced-code-blocks",
+            "header-ids",
+            "break-on-newline",
+            "cuddled-lists",
+            "code-friendly"
+        ]
+    )
+    
+    # Get Pygments CSS for code highlighting
+    code_style = HtmlFormatter().get_style_defs('.highlight')
+    
+    # Create CSS for better styling
+    css = CSS(string=f"""
+        @page {{
+            margin: 1in;
+            size: letter;
+            @top-right {{
+                content: "Page " counter(page);
+            }}
+        }}
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 2em;
+        }}
+        h1 {{
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 0.3em;
+        }}
+        h2 {{
+            color: #2c3e50;
+            margin-top: 1.5em;
+        }}
+        h3 {{
+            color: #34495e;
+        }}
+        table {{
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }}
+        th, td {{
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }}
+        th {{
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }}
+        tr:nth-child(even) {{
+            background-color: #f9f9f9;
+        }}
+        code {{
+            background-color: #f8f9fa;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: Monaco, "Courier New", monospace;
+        }}
+        pre {{
+            background-color: #f8f9fa;
+            padding: 1em;
+            border-radius: 5px;
+        }}
+        {code_style}
+    """)
+    
+    # Create complete HTML document
+    full_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+    </head>
+    <body>
+        {html_content}
+    </body>
+    </html>
+    """
+    
+    # Convert to PDF
+    HTML(string=full_html).write_pdf(pdf_path, stylesheets=[css])
+    
+    logger.info(f"PDF generated with proper formatting: {pdf_path}")
 
 
 def generate_monthly_report(
@@ -151,12 +261,17 @@ def generate_monthly_report(
             "\nNote: Transaction costs are calculated at a rate of $0.01 per share traded. Portfolio Beta shows the portfolio's beta at the time of each trade."
         ])
 
-        # Write report to file
+        # Write markdown report to file
         report_path = Path(output_dir) / "monthly_report.md"
         with open(report_path, "w") as f:
             f.write("\n".join(report_content))
 
+        # Generate PDF version
+        pdf_path = Path(output_dir) / "monthly_report.pdf"
+        markdown_to_pdf("\n".join(report_content), str(pdf_path))
+
         logger.info(f"Monthly report generated: {report_path}")
+        logger.info(f"PDF report generated: {pdf_path}")
 
     except Exception as e:
         logger.error(f"Error generating monthly report: {str(e)}")
@@ -343,7 +458,7 @@ def calculate_portfolio_metrics(simulation_results: pd.DataFrame, market_data: p
         daily_returns_pct = daily_returns * 100
         
         # Calculate VaR with minimum sample size check
-        min_samples = 20  # Minimum samples needed for reliable VaR calculation
+        min_samples = 15  # Minimum samples needed for reliable VaR calculation
         if len(daily_returns_pct) >= min_samples:
             var_95 = np.percentile(daily_returns_pct, 5)
             var_99 = np.percentile(daily_returns_pct, 1)
