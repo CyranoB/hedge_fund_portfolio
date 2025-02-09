@@ -127,20 +127,25 @@ def run_simulation(config_file: str = "config.yaml") -> pd.DataFrame:
 
         # Initialize portfolio
         logger.info("Initializing portfolio...")
-        initial_prices = market_data.iloc[0]  # Get initial prices from the first row of market data
-        portfolio = initialize_portfolio(
+        initial_prices = market_data.iloc[0].to_dict()  # Convert Series to dictionary
+        initial_date = market_data.index[0]  # Get the first date from market data
+        portfolio, initial_transaction_cost, initial_logs = initialize_portfolio(
             config["initial_capital"],
+            initial_prices,
             config["tickers_long"],
             config["tickers_short"],
             betas,
-            config["target_portfolio_beta"],
-            config["gross_exposure"],
-            initial_prices  # Pass initial prices here
+            initial_date
         )
+
+        # Log initial portfolio value and transaction costs
+        initial_portfolio_value = sum(shares * market_data.iloc[0][ticker] for ticker, shares in portfolio.items())
+        logger.info(f"Initial portfolio value: ${initial_portfolio_value:,.2f}")
+        logger.info(f"Initial transaction costs: ${initial_transaction_cost:.2f}")
 
         # Simulate portfolio performance
         logger.info("Simulating portfolio performance...")
-        simulation_results = simulate_portfolio(
+        simulation_results, transaction_logs = simulate_portfolio(  # Capture transaction logs
             market_data,
             portfolio,
             betas,
@@ -149,10 +154,13 @@ def run_simulation(config_file: str = "config.yaml") -> pd.DataFrame:
             config["target_portfolio_beta"]
         )
 
+        # Add initial transaction logs to the overall logs
+        transaction_logs = initial_logs + transaction_logs
+
         # Generate reports
         logger.info("Generating reports...")
         try:
-            generate_monthly_report(simulation_results, market_data, portfolio)
+            generate_monthly_report(simulation_results, market_data, portfolio, config, transaction_logs)  # Pass transaction logs
         except Exception as e:
             logger.error(f"Failed to generate report: {str(e)}")
             raise RuntimeError(f"Failed to generate report: {str(e)}")

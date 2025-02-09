@@ -26,7 +26,7 @@ def test_config(monkeypatch):
         "gross_exposure": 1.5,
         "target_portfolio_beta": 0.0,
         "transaction_fee": 0.001,
-        "financing_fee": 0.02,
+        "management_fee": 0.02,
         "analysis_year": 2024,
         "analysis_month": 1
     }
@@ -88,7 +88,7 @@ def test_error_recovery(tmp_path, monkeypatch):
         "gross_exposure": 1.5,
         "target_portfolio_beta": 0.0,
         "transaction_fee": 0.001,
-        "financing_fee": 0.02,
+        "management_fee": 0.02,
         "analysis_year": 2024,
         "analysis_month": 1
     }

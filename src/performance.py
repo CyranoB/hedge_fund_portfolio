@@ -4,7 +4,7 @@ Handles daily returns calculation and portfolio performance simulation.
 """
 
 import logging
-from typing import Dict, Union
+from typing import Dict, Union, Tuple, List
 
 import pandas as pd
 from rich.console import Console
@@ -12,7 +12,7 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 import numpy as np
 
 from .config import BETA_TOLERANCE
-from .portfolio import compute_portfolio_beta, rebalance_portfolio
+from .portfolio import compute_portfolio_beta, rebalance_portfolio, initialize_portfolio
 
 # Configure logging
 logging.basicConfig(
@@ -54,7 +54,7 @@ def simulate_portfolio(price_data: pd.DataFrame,
                        betas: dict,
                        exchange_rates: pd.Series,
                        management_fee_rate: float,
-                       target_beta: float) -> pd.DataFrame:
+                       target_beta: float) -> Tuple[pd.DataFrame, List[Dict[str, float]]]:
     """
     Simulate portfolio performance over the given price data.
     
@@ -67,70 +67,104 @@ def simulate_portfolio(price_data: pd.DataFrame,
         target_beta (float): Target portfolio beta.
     
     Returns:
-        pd.DataFrame: A DataFrame containing simulation results with columns:
-            - portfolio_value_usd
-            - portfolio_value_cad
-            - portfolio_beta
-            - daily_return
-            - management_fee
-            - transaction_costs
-            - rebalanced
-            - exchange_rate
+        Tuple[pd.DataFrame, List[Dict[str, float]]]: DataFrame with simulation results and list of transaction logs
     """
-    # Use the price_data index as the simulation timeline.
-    index = price_data.index
-    n = len(index)
-
-    # Compute daily portfolio USD value as the sum of ticker values.
-    # Multiply each ticker's daily prices by the corresponding shares.
-    portfolio_value_usd = price_data[list(portfolio.keys())].multiply(pd.Series(portfolio), axis=1).sum(axis=1)
-
-    # Daily return: use percentage change (set first day return to 0).
-    daily_return = portfolio_value_usd.pct_change().fillna(0)
-
-    # Compute an initial portfolio beta as a weighted average.
-    abs_positions = {ticker: abs(shares) for ticker, shares in portfolio.items()}
-    total_abs = sum(abs_positions.values())
-    initial_beta = (
-        sum(betas[ticker] * abs_positions[ticker] for ticker in portfolio) / total_abs
-        if total_abs > 0
-        else 0.0
-    )
-
-    # Simulate portfolio beta evolution as a linear interpolation
-    # from the initial beta to the target_beta.
-    portfolio_beta = pd.Series(
-        np.linspace(initial_beta, target_beta, n), index=index
-    )
-
-    # Determine whether rebalancing occurs: flag as True if deviation from target_beta exceeds BETA_TOLERANCE.
-    rebalanced = (portfolio_beta - target_beta).abs() > BETA_TOLERANCE
-
-    # Align exchange_rates with the simulation timeline.
-    exchange_rates_aligned = exchange_rates.reindex(index, method="ffill")
-
-    # Convert portfolio value to CAD.
-    portfolio_value_cad = portfolio_value_usd * exchange_rates_aligned
-
-    # Calculate daily management fee based on the annual rate.
-    management_fee = portfolio_value_usd * (management_fee_rate / 252)
-
-    # Set transaction costs to zero (dummy implementation).
-    transaction_costs = pd.Series(0.0, index=index)
-
-    # Build the final results DataFrame.
-    results = pd.DataFrame({
-        "portfolio_value_usd": portfolio_value_usd.astype(float),
-        "portfolio_value_cad": portfolio_value_cad.astype(float),
-        "portfolio_beta": portfolio_beta.astype(float),
-        "daily_return": daily_return.astype(float),
-        "management_fee": management_fee.astype(float),
-        "transaction_costs": transaction_costs.astype(float),
-        "rebalanced": rebalanced.astype(bool),
-        "exchange_rate": exchange_rates_aligned.astype(float)
-    })
-
-    return results
+    # Initialize results storage
+    results = []
+    all_transaction_logs = []  # Store all transaction logs
+    current_portfolio = portfolio.copy()
+    
+    # Calculate initial portfolio value and gross exposure
+    initial_prices = price_data.iloc[0]
+    initial_positions = {ticker: shares * initial_prices[ticker] 
+                        for ticker, shares in current_portfolio.items()}
+    initial_portfolio_value = sum(initial_positions.values())
+    initial_gross_exposure = sum(abs(value) for value in initial_positions.values())
+    
+    # Log initial portfolio state
+    logger.info(f"Initial portfolio net value: ${initial_portfolio_value:,.2f}")
+    logger.info(f"Initial portfolio gross exposure: ${initial_gross_exposure:,.2f}")
+    logger.info("Initial positions:")
+    for ticker, value in initial_positions.items():
+        logger.info(f"  {ticker}: {current_portfolio[ticker]:,.0f} shares, ${value:,.2f}")
+    
+    # Iterate through each day
+    for date in price_data.index:
+        # Get current day's prices
+        current_prices = price_data.loc[date]
+        
+        # Calculate portfolio values and positions
+        positions = {ticker: shares * current_prices[ticker] 
+                    for ticker, shares in current_portfolio.items()}
+        portfolio_value_usd = sum(positions.values())
+        gross_exposure_usd = sum(abs(value) for value in positions.values())
+        
+        # Log if gross exposure changes significantly
+        if len(results) > 0:
+            prev_exposure = sum(abs(value) for value in 
+                              {t: s * price_data.loc[price_data.index[price_data.index.get_loc(date)-1]][t] 
+                               for t, s in current_portfolio.items()}.values())
+            if abs((gross_exposure_usd - prev_exposure) / prev_exposure) > 0.05:  # 5% change
+                logger.info(f"Significant exposure change on {date}: ${gross_exposure_usd:,.2f} (prev: ${prev_exposure:,.2f})")
+        
+        # Calculate current portfolio beta
+        current_beta = compute_portfolio_beta(positions, betas)
+        
+        # Check if rebalancing is needed
+        needs_rebalancing = abs(current_beta - target_beta) > BETA_TOLERANCE
+        transaction_cost = 0.0
+        
+        # Perform rebalancing if needed
+        if needs_rebalancing:
+            # Pass the current prices and date
+            current_portfolio, rebalance_cost, transaction_logs = rebalance_portfolio(
+                current_portfolio,
+                current_prices,
+                betas,
+                target_beta,
+                date  # Pass the date directly
+            )
+            transaction_cost = rebalance_cost
+            all_transaction_logs.extend(transaction_logs)  # Add new transaction logs
+            
+            # Log portfolio state after rebalancing
+            new_positions = {ticker: shares * current_prices[ticker] 
+                           for ticker, shares in current_portfolio.items()}
+            new_gross_exposure = sum(abs(value) for value in new_positions.values())
+            logger.info(f"Gross exposure after rebalancing: ${new_gross_exposure:,.2f}")
+        
+        # Calculate daily return based on gross exposure
+        if len(results) > 0:
+            prev_gross_exposure = sum(abs(value) for value in 
+                                    {t: s * price_data.loc[price_data.index[price_data.index.get_loc(date)-1]][t] 
+                                     for t, s in current_portfolio.items()}.values())
+            daily_return = (gross_exposure_usd / prev_gross_exposure) - 1 if prev_gross_exposure > 0 else 0.0
+        else:
+            daily_return = 0.0  # First day has no return
+        
+        # Calculate management fee based on gross exposure
+        management_fee = gross_exposure_usd * (management_fee_rate / 252)
+        
+        # Store daily results
+        results.append({
+            "portfolio_value_usd": portfolio_value_usd,
+            "gross_exposure_usd": gross_exposure_usd,
+            "portfolio_value_cad": portfolio_value_usd * exchange_rates[date],
+            "portfolio_beta": current_beta,
+            "daily_return": daily_return,
+            "management_fee": management_fee,
+            "transaction_costs": transaction_cost,
+            "rebalanced": needs_rebalancing,
+            "exchange_rate": exchange_rates[date]
+        })
+    
+    # Log final portfolio state
+    final_gross_exposure = results[-1]["gross_exposure_usd"]
+    logger.info(f"Final portfolio net value: ${results[-1]['portfolio_value_usd']:,.2f}")
+    logger.info(f"Final portfolio gross exposure: ${final_gross_exposure:,.2f}")
+    
+    # Convert results to DataFrame
+    return pd.DataFrame(results, index=price_data.index), all_transaction_logs
 
 
 def compute_beta(stock_returns: pd.Series, market_returns: pd.Series) -> float:

@@ -115,7 +115,7 @@ def test_initialize_portfolio(sample_prices_data):
 
     # Check that portfolio beta is approximately target
     portfolio_beta = compute_portfolio_beta(portfolio, betas)
-    assert abs(portfolio_beta - target_portfolio_beta) < 0.01
+    assert abs(portfolio_beta - target_portfolio_beta) < BETA_TOLERANCE  # Use the constant
 
 
 def test_rebalance_portfolio():
@@ -157,3 +157,66 @@ def test_rebalance_portfolio():
 
     # Check if beta is closer to target
     assert abs(new_beta - target_beta) < BETA_TOLERANCE
+
+
+def test_initialize_portfolio_value_constraints():
+    """Test that initialized portfolio value stays within bounds of initial capital."""
+    # Test setup
+    initial_capital = 10_000_000
+    tickers_long = ["AAPL", "MSFT", "AMZN"]
+    tickers_short = ["TSLA", "META", "NVDA"]
+    
+    # Sample betas with realistic values
+    betas = {
+        "AAPL": 1.2,
+        "MSFT": 1.1,
+        "AMZN": 1.3,
+        "TSLA": 1.5,
+        "META": 1.4,
+        "NVDA": 1.6
+    }
+    
+    # Sample prices
+    initial_prices = pd.Series({
+        "AAPL": 180.0,
+        "MSFT": 390.0,
+        "AMZN": 150.0,
+        "TSLA": 220.0,
+        "META": 370.0,
+        "NVDA": 480.0
+    })
+    
+    # Test different gross exposure levels
+    for gross_exposure in [1.5, 2.0, 3.0]:
+        portfolio = initialize_portfolio(
+            initial_capital=initial_capital,
+            tickers_long=tickers_long,
+            tickers_short=tickers_short,
+            betas=betas,
+            target_portfolio_beta=0.0,
+            gross_exposure=gross_exposure,
+            initial_prices=initial_prices
+        )
+        
+        # Calculate total portfolio value
+        positions_value = sum(shares * initial_prices[ticker] for ticker, shares in portfolio.items())
+        
+        # Calculate gross exposure
+        gross_exposure_value = sum(abs(shares * initial_prices[ticker]) for ticker, shares in portfolio.items())
+        
+        # Test constraints
+        assert positions_value <= initial_capital * 1.01, f"Portfolio value {positions_value} exceeds initial capital {initial_capital}"
+        assert positions_value >= initial_capital * 0.95, f"Portfolio value {positions_value} is too small compared to initial capital {initial_capital}"
+        
+        # Verify gross exposure
+        expected_gross_exposure = initial_capital * gross_exposure
+        assert abs(gross_exposure_value - expected_gross_exposure) <= expected_gross_exposure * 0.05, \
+            f"Gross exposure {gross_exposure_value} deviates too much from expected {expected_gross_exposure}"
+        
+        # Verify long and short positions are roughly balanced (for market neutrality)
+        long_value = sum(shares * initial_prices[ticker] for ticker, shares in portfolio.items() if shares > 0)
+        short_value = abs(sum(shares * initial_prices[ticker] for ticker, shares in portfolio.items() if shares < 0))
+        
+        # Allow for some deviation due to beta balancing
+        assert abs(long_value - short_value) <= initial_capital * 0.1, \
+            f"Long ({long_value}) and short ({short_value}) positions are not well balanced"

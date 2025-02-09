@@ -40,7 +40,7 @@ def load_config() -> Dict[str, Any]:
         "management_fee": 0.02,  # 2% annual management fee
         "target_beta": 0.8,  # Target portfolio beta
         "rebalancing_threshold": 0.1,  # 10% threshold for rebalancing
-        "transaction_cost": 0.001,  # 0.1% transaction cost
+        "transaction_fee": 0.001,  # 0.1% transaction cost
     }
 
     try:

@@ -47,11 +47,23 @@ def test_generate_monthly_report(tmp_path):
         "META": -400
     }
 
+    # Create sample config
+    config = {
+        "tickers_long": ["AAPL", "MSFT"],
+        "tickers_short": ["TSLA", "META"],
+        "market_index": "^GSPC",
+        "initial_capital": 10000000,
+        "management_fee": 0.02,
+        "target_portfolio_beta": 0.0,
+        "gross_exposure": 1.5,
+        "transaction_fee": 0.01
+    }
+
     # Change to temporary directory
     os.chdir(tmp_path)
 
     # Generate report
-    generate_monthly_report(simulation_results, market_data, portfolio)
+    generate_monthly_report(simulation_results, market_data, portfolio, config)
 
     # Verify report was created
     report_path = Path("docs/monthly_report.md")
@@ -64,4 +76,5 @@ def test_generate_monthly_report(tmp_path):
         assert "Portfolio Summary" in content
         assert "Risk Metrics" in content
         assert "Fee Summary" in content
-        assert "Portfolio Composition" in content
+        assert "Initial Portfolio Composition" in content
+        assert "Final Portfolio Composition" in content
