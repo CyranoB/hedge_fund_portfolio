@@ -1,17 +1,30 @@
-initial_capital: 1000000
-management_fee: 0.02
-rebalancing_threshold: 0.1
-target_beta: 0.8
-tickers:
-- AAPL
-- MSFT
-- GOOGL
-- AMZN
-- META
-- XOM
-- CVX
-- COP
-- SLB
-- EOG
-- ^GSPC
-transaction_cost: 0.001
+# Portfolio Configuration
+tickers_long:
+  - AAPL
+  - MSFT
+  - AMZN
+  - JNJ
+  - WMT
+tickers_short:
+  - TSLA
+  - META
+  - SHOP
+  - NVDA
+  - BA
+market_index: "^GSPC"
+
+# Capital and Exposure
+initial_capital: 10000000
+gross_exposure: 1.5
+target_portfolio_beta: 0.0
+
+# Fees
+transaction_fee: 0.01
+financing_fee: 0.02
+
+# Analysis Period
+analysis_year: 2025
+analysis_month: 1
+
+# Risk Parameters
+beta_tolerance: 0.05

@@ -11,7 +11,7 @@ import statsmodels.api as sm
 from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 
-from src.config import BETA_TOLERANCE, MARKET_INDEX
+from config import BETA_TOLERANCE, MARKET_INDEX
 
 # Configure logging
 logging.basicConfig(

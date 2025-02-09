@@ -11,8 +11,8 @@ from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 import numpy as np
 
-from src.config import BETA_TOLERANCE
-from src.portfolio import compute_portfolio_beta, rebalance_portfolio
+from config import BETA_TOLERANCE
+from portfolio import compute_portfolio_beta, rebalance_portfolio
 
 # Configure logging
 logging.basicConfig(

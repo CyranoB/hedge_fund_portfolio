@@ -197,15 +197,15 @@
      - [x] Run static analysis tools (like `flake8` or `pylint`) to verify code quality.
 
 9. **Final Integration and Validation**  
-   - [ ] **Run the Full Simulation**  
-     - [ ] Execute the complete program for the analysis period (January 2025).
-     - [ ] Validate that the simulation runs without errors.
-   - [ ] **Verify Outputs**  
-     - [ ] Confirm that the daily simulation DataFrame contains correct values (USD/CAD portfolio values, beta, flags).
-     - [ ] Check that the PDF report (monthly investor letter) is generated and includes:
-       - [ ] Strategy justification.
-       - [ ] Performance summary.
-       - [ ] Beta evolution and rebalancing details.
-     - [ ] Verify that the Excel file is created with multiple sheets (daily performance, rebalancing logs, beta calculations).
-   - [ ] **Review Logging and Error Handling**  
-     - [ ] Inspect log files (or console output) for any errors or warnings during the simulation.
+   - [x] **Run the Full Simulation**  
+     - [x] Execute the complete program for the analysis period (January 2025).
+     - [x] Validate that the simulation runs without errors.
+   - [x] **Verify Outputs**  
+     - [x] Confirm that the daily simulation DataFrame contains correct values (USD/CAD portfolio values, beta, flags).
+     - [x] Check that the PDF report (monthly investor letter) is generated and includes:
+       - [x] Strategy justification.
+       - [x] Performance summary.
+       - [x] Beta evolution and rebalancing details.
+     - [x] Verify that the Excel file is created with multiple sheets (daily performance, rebalancing logs, beta calculations).
+   - [x] **Review Logging and Error Handling**  
+     - [x] Inspect log files (or console output) for any errors or warnings during the simulation.
