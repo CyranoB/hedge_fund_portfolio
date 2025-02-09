@@ -83,6 +83,7 @@ def test_initialize_portfolio(sample_prices_data):
     }
     target_portfolio_beta = 0.0
     gross_exposure = 1.5
+    initial_prices = sample_prices_data.iloc[0]  # Use the first row of sample prices as initial prices
 
     portfolio = initialize_portfolio(
         initial_capital,
@@ -90,7 +91,8 @@ def test_initialize_portfolio(sample_prices_data):
         tickers_short,
         betas,
         target_portfolio_beta,
-        gross_exposure
+        gross_exposure,
+        initial_prices  # Pass initial prices here
     )
 
     # Check that portfolio is a dictionary
@@ -106,8 +108,8 @@ def test_initialize_portfolio(sample_prices_data):
         assert portfolio[ticker] < 0
 
     # Check that gross exposure is approximately correct
-    total_long = sum(pos for pos in portfolio.values() if pos > 0)
-    total_short = abs(sum(pos for pos in portfolio.values() if pos < 0))
+    total_long = sum(pos * initial_prices[ticker] for ticker, pos in portfolio.items() if pos > 0)
+    total_short = abs(sum(pos * initial_prices[ticker] for ticker, pos in portfolio.items() if pos < 0))
     actual_gross_exposure = (total_long + total_short) / initial_capital
     assert abs(actual_gross_exposure - gross_exposure) < 0.01
 

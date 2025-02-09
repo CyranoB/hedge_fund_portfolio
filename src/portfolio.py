@@ -11,7 +11,7 @@ import statsmodels.api as sm
 from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 
-from config import BETA_TOLERANCE, MARKET_INDEX
+from .config import BETA_TOLERANCE, MARKET_INDEX
 
 # Configure logging
 logging.basicConfig(
@@ -89,7 +89,8 @@ def initialize_portfolio(
     tickers_short: List[str],
     betas: Dict[str, float],
     target_portfolio_beta: float,
-    gross_exposure: float
+    gross_exposure: float,
+    initial_prices: pd.Series
 ) -> Dict[str, float]:
     """
     Initialize a portfolio with positions for long and short tickers that achieve the
@@ -107,9 +108,10 @@ def initialize_portfolio(
         betas (dict): Dictionary mapping each ticker to its beta.
         target_portfolio_beta (float): The target beta for the portfolio (typically 0).
         gross_exposure (float): Desired gross exposure (e.g., 1.5).
+        initial_prices (pd.Series): Initial prices for each ticker.
 
     Returns:
-        dict: A dictionary mapping tickers to their dollar allocations (positive for longs,
+        dict: A dictionary mapping tickers to their number of shares (positive for longs,
               negative for shorts).
     """
     total_exposure = initial_capital * gross_exposure
@@ -125,13 +127,13 @@ def initialize_portfolio(
 
     portfolio = {}
 
-    # Allocate long exposure equally among long tickers.
+    # Allocate long exposure equally among long tickers based on initial prices.
     for ticker in tickers_long:
-        portfolio[ticker] = L / len(tickers_long)
+        portfolio[ticker] = (L / len(tickers_long)) / initial_prices[ticker]
 
-    # Allocate short exposure equally among short tickers (using negative allocations).
+    # Allocate short exposure equally among short tickers (using negative allocations) based on initial prices.
     for ticker in tickers_short:
-        portfolio[ticker] = - (S / len(tickers_short))
+        portfolio[ticker] = - (S / len(tickers_short)) / initial_prices[ticker]
 
     return portfolio
 

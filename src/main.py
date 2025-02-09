@@ -13,11 +13,11 @@ from pathlib import Path
 from rich.logging import RichHandler
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from config import load_config
-from data_acquisition import download_market_data, get_date_range, validate_market_data, get_exchange_rates
-from performance import calculate_daily_returns, simulate_portfolio
-from portfolio import compute_beta, initialize_portfolio, rebalance_portfolio
-from reporting import export_to_excel, generate_monthly_report
+from .config import load_config
+from .data_acquisition import download_market_data, get_date_range, validate_market_data, get_exchange_rates
+from .performance import calculate_daily_returns, simulate_portfolio
+from .portfolio import compute_beta, initialize_portfolio, rebalance_portfolio
+from .reporting import export_to_excel, generate_monthly_report
 
 
 def setup_logging(log_file: str = "hedge_fund_simulation.log") -> logging.Logger:
@@ -127,13 +127,15 @@ def run_simulation(config_file: str = "config.yaml") -> pd.DataFrame:
 
         # Initialize portfolio
         logger.info("Initializing portfolio...")
+        initial_prices = market_data.iloc[0]  # Get initial prices from the first row of market data
         portfolio = initialize_portfolio(
             config["initial_capital"],
             config["tickers_long"],
             config["tickers_short"],
             betas,
             config["target_portfolio_beta"],
-            config["gross_exposure"]
+            config["gross_exposure"],
+            initial_prices  # Pass initial prices here
         )
 
         # Simulate portfolio performance

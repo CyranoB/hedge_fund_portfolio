@@ -224,7 +224,10 @@ def calculate_portfolio_metrics(simulation_results: pd.DataFrame, market_data: p
         
         # Calculate annualized return
         trading_days = len(simulation_results)
-        annualized_return = (1 + total_return) ** (252 / trading_days) - 1
+        if total_return >= 0:
+            annualized_return = (1 + total_return) ** (252 / trading_days) - 1
+        else:
+            annualized_return = float('nan')  # Set to NaN if total_return is negative
         
         # Calculate Sharpe ratio (assuming risk-free rate of 0.02)
         risk_free_rate = 0.02
