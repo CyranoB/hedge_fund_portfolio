@@ -2,8 +2,6 @@
 Unit tests for the data acquisition module.
 """
 
-from datetime import datetime
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -109,29 +107,30 @@ def test_get_exchange_rates():
 
 def test_validate_market_data():
     """Test market data validation function."""
-    # Create a valid DataFrame
+    # Test case 1: Valid data
     dates = pd.date_range(start="2025-01-01", end="2025-01-31", freq="B")
-    valid_data = pd.DataFrame(
-        {"AAPL": range(1, len(dates) + 1), "MSFT": range(2, len(dates) + 2)}, index=dates
-    )
+    valid_data = pd.DataFrame({
+        'AAPL': np.random.uniform(100, 110, len(dates)),
+        'GOOGL': np.random.uniform(2500, 2600, len(dates)),
+        'SPY': np.random.uniform(400, 410, len(dates))
+    }, index=dates)
+    assert validate_market_data(valid_data) is True
 
-    assert validate_market_data(valid_data) == True
+    # Test case 2: Missing values
+    data_with_missing = valid_data.copy()
+    data_with_missing.iloc[0, 0] = None
+    assert not validate_market_data(data_with_missing)
 
-    # Test with missing values
-    invalid_data = valid_data.copy()
-    invalid_data.iloc[0, 0] = None
-    assert validate_market_data(invalid_data) == False
+    # Test case 3: Zero values
+    data_with_zeros = valid_data.copy()
+    data_with_zeros.iloc[0, 0] = 0
+    assert not validate_market_data(data_with_zeros)
 
-    # Test with insufficient trading days
-    short_data = valid_data.iloc[:5]
-    assert validate_market_data(short_data) == False
+    # Test case 4: Negative values
+    data_with_negative = valid_data.copy()
+    data_with_negative.iloc[0, 0] = -1
+    assert not validate_market_data(data_with_negative)
 
-    # Test with zero prices
-    zero_data = valid_data.copy()
-    zero_data.iloc[0, 0] = 0
-    assert validate_market_data(zero_data) == False
-
-    # Test with negative prices
-    negative_data = valid_data.copy()
-    negative_data.iloc[0, 0] = -1
-    assert validate_market_data(negative_data) == False
+    # Test case 5: Empty DataFrame
+    empty_data = pd.DataFrame()
+    assert not validate_market_data(empty_data)

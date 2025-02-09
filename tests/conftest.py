@@ -2,8 +2,6 @@
 Shared test fixtures for both unit and integration tests.
 """
 
-from datetime import datetime, timedelta
-
 import numpy as np
 import pandas as pd
 import pytest

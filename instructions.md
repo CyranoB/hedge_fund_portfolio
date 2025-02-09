@@ -178,20 +178,34 @@
        - [x] Verifies that all modules interact correctly and that final outputs (PDF, Excel, logs) are generated.
 
 8. **Documentation, Testing, and Quality Assurance**  
-   - [ ] **Documentation**  
-     - [ ] Add comprehensive docstrings to every function and module.
-     - [ ] Comment key parts of the code to explain the logic behind beta calculations, rebalancing, fees, etc.
-     - [ ] Update `README.md` with:
-       - [ ] Project overview.
-       - [ ] Installation instructions.
-       - [ ] Usage guidelines.
-       - [ ] Instructions on how to change the analysis period and other parameters.
-   - [ ] **Unit Testing at Each Step**  
-     - [ ] Ensure that each module has its corresponding test file in the `tests/` folder.
-     - [ ] Run the unit tests to catch and fix any errors.
-   - [ ] **Integration Testing**  
-     - [ ] Run the integration tests to verify that different modules work together as expected.
-     - [ ] Document the testing procedures in the `README.md` or a dedicated testing documentation file.
-   - [ ] **Code Quality**  
-     - [ ] Ensure adherence to PEP 8 style guidelines.
-     - [ ] Run static analysis tools (like `flake8` or `pylint`) to verify code quality.
+   - [x] **Documentation**  
+     - [x] Add comprehensive docstrings to every function and module.
+     - [x] Comment key parts of the code to explain the logic behind beta calculations, rebalancing, fees, etc.
+     - [x] Update `README.md` with:
+       - [x] Project overview.
+       - [x] Installation instructions.
+       - [x] Usage guidelines.
+       - [x] Instructions on how to change the analysis period and other parameters.
+   - [x] **Unit Testing at Each Step**  
+     - [x] Ensure that each module has its corresponding test file in the `tests/` folder.
+     - [x] Run the unit tests to catch and fix any errors.
+   - [x] **Integration Testing**  
+     - [x] Run the integration tests to verify that different modules work together as expected.
+     - [x] Document the testing procedures in the `README.md` or a dedicated testing documentation file.
+   - [x] **Code Quality**  
+     - [x] Ensure adherence to PEP 8 style guidelines.
+     - [x] Run static analysis tools (like `flake8` or `pylint`) to verify code quality.
+
+9. **Final Integration and Validation**  
+   - [ ] **Run the Full Simulation**  
+     - [ ] Execute the complete program for the analysis period (January 2025).
+     - [ ] Validate that the simulation runs without errors.
+   - [ ] **Verify Outputs**  
+     - [ ] Confirm that the daily simulation DataFrame contains correct values (USD/CAD portfolio values, beta, flags).
+     - [ ] Check that the PDF report (monthly investor letter) is generated and includes:
+       - [ ] Strategy justification.
+       - [ ] Performance summary.
+       - [ ] Beta evolution and rebalancing details.
+     - [ ] Verify that the Excel file is created with multiple sheets (daily performance, rebalancing logs, beta calculations).
+   - [ ] **Review Logging and Error Handling**  
+     - [ ] Inspect log files (or console output) for any errors or warnings during the simulation.

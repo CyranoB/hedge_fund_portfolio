@@ -7,60 +7,46 @@ import atexit
 import glob
 import logging
 import os
-import shutil
-from datetime import datetime, timedelta
+import pandas as pd
+from pathlib import Path
 
 from rich.logging import RichHandler
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from src.config import load_config
-from src.data_acquisition import (
-    download_market_data,
-    get_date_range,
-    get_exchange_rates,
-    validate_market_data,
-)
+from src.data_acquisition import download_market_data, get_date_range, validate_market_data, get_exchange_rates
 from src.performance import calculate_daily_returns, simulate_portfolio
 from src.portfolio import compute_beta, initialize_portfolio, rebalance_portfolio
 from src.reporting import export_to_excel, generate_monthly_report
 
 
-def setup_logging(log_file="hedge_fund_simulation.log"):
-    """
-    Set up logging configuration with both file and console handlers.
+def setup_logging(log_file: str = "hedge_fund_simulation.log") -> logging.Logger:
+    """Set up logging configuration.
 
     Args:
-        log_file (str): Path to the log file
+        log_file (str): Path to the log file. Defaults to "hedge_fund_simulation.log".
 
     Returns:
-        logging.Logger: Configured logger instance
+        logging.Logger: Configured logger instance.
     """
-    # Create the logs directory if it doesn't exist
-    os.makedirs(os.path.dirname(log_file) if os.path.dirname(log_file) else ".", exist_ok=True)
+    logger = logging.getLogger("src.main")
+    logger.setLevel(logging.INFO)
 
-    # Remove any existing handlers
-    root = logging.getLogger()
-    if root.handlers:
-        for handler in root.handlers:
-            root.removeHandler(handler)
+    # Create handlers
+    console_handler = logging.StreamHandler()
+    file_handler = logging.FileHandler(log_file)
 
-    # Create and configure file handler
-    file_handler = logging.FileHandler(log_file, mode="w")
-    file_handler.setFormatter(
-        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="[%X]")
-    )
+    # Create formatters and add it to handlers
+    log_format = "%(asctime)s %(levelname)-8s %(message)s"
+    date_format = "%y/%m/%d %H:%M:%S"
+    formatter = logging.Formatter(log_format, date_format)
+    
+    console_handler.setFormatter(formatter)
+    file_handler.setFormatter(formatter)
 
-    # Create and configure console handler
-    console_handler = RichHandler(rich_tracebacks=True)
-    console_handler.setFormatter(logging.Formatter("%(message)s"))
-
-    # Configure root logger
-    root.setLevel(logging.INFO)
-    root.addHandler(file_handler)
-    root.addHandler(console_handler)
-
-    # Get logger for this module
-    logger = logging.getLogger(__name__)
+    # Add handlers to the logger
+    logger.addHandler(console_handler)
+    logger.addHandler(file_handler)
 
     return logger
 
@@ -76,38 +62,41 @@ def cleanup_temp_files():
                 logging.warning(f"Failed to remove temporary file {file}: {e}")
 
 
-def run_simulation():
-    """
-    Run the complete hedge fund portfolio simulation.
+def run_simulation(config_file: str = "config.yaml") -> pd.DataFrame:
+    """Run the hedge fund portfolio simulation.
 
-    This function orchestrates the entire simulation workflow:
-    1. Loads configuration
-    2. Downloads market data
-    3. Initializes portfolio
-    4. Runs daily simulation
-    5. Generates reports
+    Args:
+        config_file (str): Path to the configuration file.
 
     Returns:
-        pd.DataFrame: Daily simulation results
+        pd.DataFrame: Simulation results.
 
     Raises:
-        ValueError: If market data validation fails
-        RuntimeError: If simulation fails
+        ValueError: If market data validation fails or configuration is invalid
+        RuntimeError: If simulation or report generation fails
     """
     try:
-        # Set up logging and cleanup
+        # Set up logging
         logger = setup_logging()
-        atexit.register(cleanup_temp_files)
+        logger.info("Starting hedge fund portfolio simulation...")
 
         # Load configuration
-        logger.info("Loading configuration...")
         config = load_config()
 
-        # Create output directories
-        os.makedirs("data", exist_ok=True)
-        os.makedirs("docs", exist_ok=True)
+        # Validate required config values
+        required_keys = [
+            "tickers_long",
+            "tickers_short",
+            "market_index",
+            "initial_capital",
+            "gross_exposure",
+            "target_portfolio_beta"
+        ]
+        missing_keys = [key for key in required_keys if key not in config]
+        if missing_keys:
+            raise ValueError(f"Missing required configuration keys: {', '.join(missing_keys)}")
 
-        # Get date range for analysis
+        # Calculate analysis period
         logger.info("Calculating analysis period...")
         start_date, end_date = get_date_range(
             config.get("analysis_year", 2024), config.get("analysis_month", 1)
@@ -116,70 +105,58 @@ def run_simulation():
         # Combine all tickers
         all_tickers = config["tickers_long"] + config["tickers_short"] + [config["market_index"]]
 
-        with Progress(
-            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), transient=True
-        ) as progress:
-            # Download market data
-            progress.add_task("Downloading market data...", total=None)
-            logger.info("Downloading market data...")
-            market_data = download_market_data(all_tickers, start_date, end_date)
+        # Download market data
+        logger.info("Downloading market data...")
+        market_data = download_market_data(all_tickers, start_date, end_date)
+        exchange_rates = get_exchange_rates(start_date, end_date)
 
-            # Validate market data
-            if not validate_market_data(market_data):
-                raise ValueError("Market data validation failed")
+        # Validate market data
+        if not validate_market_data(market_data):
+            logger.error("Market data validation failed")
+            raise ValueError("Market data validation failed")
 
-            # Get exchange rates
-            progress.add_task("Retrieving exchange rates...", total=None)
-            logger.info("Retrieving exchange rates...")
-            exchange_rates = get_exchange_rates(start_date, end_date)
+        # Calculate daily returns
+        logger.info("Calculating daily returns...")
+        returns = calculate_daily_returns(market_data)
 
-            # Calculate daily returns
-            progress.add_task("Calculating returns...", total=None)
-            logger.info("Calculating daily returns...")
-            daily_returns = calculate_daily_returns(market_data)
+        # Compute initial betas
+        logger.info("Computing initial betas...")
+        betas = {}
+        for ticker in all_tickers[:-1]:  # Exclude market index
+            betas[ticker] = compute_beta(returns[ticker], returns[config["market_index"]])
 
-            # Calculate betas for each ticker
-            logger.info("Computing initial betas...")
-            market_returns = daily_returns[config["market_index"]]
-            betas = {}
-            for ticker in all_tickers:
-                if ticker != config["market_index"]:
-                    betas[ticker] = compute_beta(daily_returns[ticker], market_returns)
+        # Initialize portfolio
+        logger.info("Initializing portfolio...")
+        portfolio = initialize_portfolio(
+            config["initial_capital"],
+            config["tickers_long"],
+            config["tickers_short"],
+            betas,
+            config["target_portfolio_beta"],
+            config["gross_exposure"]
+        )
 
-            # Initialize portfolio
-            progress.add_task("Initializing portfolio...", total=None)
-            logger.info("Initializing portfolio...")
-            portfolio = initialize_portfolio(
-                config["initial_capital"],
-                market_data,
-                config["tickers_long"],
-                config["tickers_short"],
-            )
+        # Simulate portfolio performance
+        logger.info("Simulating portfolio performance...")
+        simulation_results = simulate_portfolio(
+            market_data,
+            portfolio,
+            betas,
+            exchange_rates,
+            config["transaction_fee"],
+            config["target_portfolio_beta"]
+        )
 
-            # Run portfolio simulation
-            progress.add_task("Simulating portfolio...", total=None)
-            logger.info("Simulating portfolio performance...")
-            simulation_results = simulate_portfolio(
-                market_data,
-                portfolio,
-                daily_returns,
-                exchange_rates,
-                config["management_fee"],
-                config["target_beta"],
-            )
+        # Generate reports
+        logger.info("Generating reports...")
+        try:
+            generate_monthly_report(simulation_results, market_data, portfolio)
+        except Exception as e:
+            logger.error(f"Failed to generate report: {str(e)}")
+            raise RuntimeError(f"Failed to generate report: {str(e)}")
 
-            # Generate reports
-            progress.add_task("Generating reports...", total=None)
-            logger.info("Generating reports...")
-
-            generate_monthly_report(
-                simulation_results, portfolio, betas, os.path.join("docs", "monthly_report.pdf")
-            )
-
-            export_to_excel(simulation_results, os.path.join("docs", "portfolio_performance.xlsx"))
-
-            logger.info("Simulation completed successfully")
-            return simulation_results
+        logger.info("Simulation completed successfully")
+        return simulation_results
 
     except Exception as e:
         logger.error(f"Error during simulation: {str(e)}")

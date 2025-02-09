@@ -5,13 +5,12 @@ Handles PDF report generation and Excel data export.
 
 import logging
 import os
-from typing import Dict, List, Union
+from datetime import date, datetime
+from pathlib import Path
+from typing import Dict
 
 import pandas as pd
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+import numpy as np
 from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 
@@ -24,173 +23,109 @@ console = Console()
 
 
 def generate_monthly_report(
-    daily_results: pd.DataFrame,
+    simulation_results: pd.DataFrame,
+    market_data: pd.DataFrame,
     portfolio: Dict[str, float],
-    beta_dict: Union[pd.DataFrame, Dict[str, float]],
-    output_path: str = "docs/monthly_report.pdf",
+    output_dir: str = "docs",
 ) -> None:
     """
-    Generate monthly investor letter in PDF format.
+    Generate monthly performance report.
 
     Args:
-        daily_results (pd.DataFrame): Daily portfolio performance results
-        portfolio (Dict[str, float]): Final portfolio positions
-        beta_dict (Union[pd.DataFrame, Dict[str, float]]): Beta values for each ticker
-        output_path (str): Path to save the PDF report
+        simulation_results (pd.DataFrame): Daily simulation results
+        market_data (pd.DataFrame): Market data for all tickers
+        portfolio (Dict[str, float]): Portfolio positions
+        output_dir (str): Output directory for reports
     """
     try:
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            console=console,
-        ) as progress:
-            task = progress.add_task("[green]Generating monthly report...", total=100)
+        # Create output directory
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-            # Ensure output directory exists
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        # Calculate portfolio metrics
+        metrics = calculate_portfolio_metrics(simulation_results, market_data)
 
-            # Create PDF document
-            doc = SimpleDocTemplate(output_path, pagesize=letter)
-            styles = getSampleStyleSheet()
-            story = []
+        # Generate report content
+        report_content = [
+            "# Monthly Performance Report\n",
+            f"## Report Date: {datetime.now().strftime('%Y-%m-%d')}\n",
+            "\n### Portfolio Summary\n",
+            f"* Initial Portfolio Value (USD): ${metrics['initial_value_usd']:,.2f}",
+            f"* Final Portfolio Value (USD): ${metrics['final_value_usd']:,.2f}",
+            f"* Total Return: {metrics['total_return']:.2%}",
+            f"* Annualized Return: {metrics['annualized_return']:.2%}",
+            f"* Sharpe Ratio: {metrics['sharpe_ratio']:.2f}",
+            f"* Maximum Drawdown: {metrics['max_drawdown']:.2%}",
+            f"* Beta to Market: {metrics['portfolio_beta']:.2f}",
+            "\n### Risk Metrics\n",
+            f"* Daily Value at Risk (95%): ${metrics['var_95']:,.2f}",
+            f"* Daily Value at Risk (99%): ${metrics['var_99']:,.2f}",
+            f"* Daily Expected Shortfall (95%): ${metrics['es_95']:,.2f}",
+            "\n### Fee Summary\n",
+            f"* Total Management Fees: ${metrics['total_management_fees']:,.2f}",
+            f"* Total Transaction Costs: ${metrics['total_transaction_costs']:,.2f}",
+            "\n### Portfolio Composition\n",
+        ]
 
-            # Add title
-            title_style = ParagraphStyle(
-                "CustomTitle", parent=styles["Heading1"], fontSize=24, spaceAfter=30
-            )
-            story.append(Paragraph("Monthly Investor Letter", title_style))
-            progress.update(task, advance=10)
-
-            # Add strategy introduction
-            story.append(Paragraph("Strategy Overview", styles["Heading2"]))
-            story.append(
-                Paragraph(
-                    """Our market-neutral hedge fund strategy aims to generate consistent returns 
-                while maintaining minimal exposure to overall market movements. We achieve this 
-                through a balanced portfolio of long and short positions in carefully selected 
-                stocks.""",
-                    styles["Normal"],
-                )
-            )
-            story.append(Spacer(1, 12))
-            progress.update(task, advance=10)
-
-            # Portfolio composition
-            story.append(Paragraph("Portfolio Composition", styles["Heading2"]))
-            long_positions = {k: v for k, v in portfolio.items() if v > 0}
-            short_positions = {k: v for k, v in portfolio.items() if v < 0}
-
-            # Get the beta values
-            if isinstance(beta_dict, pd.DataFrame):
-                latest_betas = beta_dict.iloc[-1]
+        # Add portfolio positions
+        for ticker, shares in portfolio.items():
+            # Handle both DataFrame and dict market data
+            if isinstance(market_data, pd.DataFrame):
+                price = market_data[ticker].iloc[-1]
             else:
-                latest_betas = beta_dict
+                price = market_data[ticker]  # For dict of numpy.float64
+            value = shares * price
+            report_content.append(f"* {ticker}: {shares:,.0f} shares (${value:,.2f})")
 
-            # Create tables for long and short positions
-            position_data = [["Position Type", "Ticker", "Shares", "Beta"]]
-            for ticker, shares in long_positions.items():
-                position_data.append(
-                    ["Long", ticker, f"{shares:.0f}", f"{latest_betas[ticker]:.2f}"]
-                )
-            for ticker, shares in short_positions.items():
-                position_data.append(
-                    ["Short", ticker, f"{shares:.0f}", f"{latest_betas[ticker]:.2f}"]
-                )
+        # Write report to file
+        report_path = Path(output_dir) / "monthly_report.md"
+        with open(report_path, "w") as f:
+            f.write("\n".join(report_content))
 
-            position_table = Table(position_data)
-            position_table.setStyle(
-                TableStyle(
-                    [
-                        ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                        ("FONTSIZE", (0, 0), (-1, 0), 14),
-                        ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
-                        ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
-                        ("TEXTCOLOR", (0, 1), (-1, -1), colors.black),
-                        ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                        ("FONTSIZE", (0, 1), (-1, -1), 12),
-                        ("GRID", (0, 0), (-1, -1), 1, colors.black),
-                    ]
-                )
-            )
-            story.append(position_table)
-            story.append(Spacer(1, 12))
-            progress.update(task, advance=20)
-
-            # Performance summary
-            story.append(Paragraph("Performance Summary", styles["Heading2"]))
-
-            # Calculate key metrics
-            initial_value_usd = daily_results["portfolio_value_usd"].iloc[0]
-            final_value_usd = daily_results["portfolio_value_usd"].iloc[-1]
-            total_return = (final_value_usd - initial_value_usd) / initial_value_usd * 100
-
-            total_fees = daily_results["management_fee"].sum()
-            total_costs = daily_results["transaction_costs"].sum()
-            num_rebalances = daily_results["rebalanced"].sum()
-
-            avg_beta = daily_results["portfolio_beta"].mean()
-            max_beta = daily_results["portfolio_beta"].max()
-            min_beta = daily_results["portfolio_beta"].min()
-
-            metrics_data = [
-                ["Metric", "Value"],
-                ["Total Return", f"{total_return:.2f}%"],
-                ["Initial Value (USD)", f"${initial_value_usd:,.2f}"],
-                ["Final Value (USD)", f"${final_value_usd:,.2f}"],
-                ["Management Fees", f"${total_fees:,.2f}"],
-                ["Transaction Costs", f"${total_costs:,.2f}"],
-                ["Number of Rebalances", f"{num_rebalances:d}"],
-                ["Average Beta", f"{avg_beta:.3f}"],
-                ["Beta Range", f"{min_beta:.3f} to {max_beta:.3f}"],
-            ]
-
-            metrics_table = Table(metrics_data)
-            metrics_table.setStyle(
-                TableStyle(
-                    [
-                        ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                        ("FONTSIZE", (0, 0), (-1, 0), 14),
-                        ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
-                        ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
-                        ("TEXTCOLOR", (0, 1), (-1, -1), colors.black),
-                        ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                        ("FONTSIZE", (0, 1), (-1, -1), 12),
-                        ("GRID", (0, 0), (-1, -1), 1, colors.black),
-                    ]
-                )
-            )
-            story.append(metrics_table)
-            progress.update(task, advance=30)
-
-            # Rebalancing analysis
-            story.append(Spacer(1, 12))
-            story.append(Paragraph("Portfolio Rebalancing Analysis", styles["Heading2"]))
-            rebalance_dates = daily_results[daily_results["rebalanced"]].index
-            if len(rebalance_dates) > 0:
-                rebalancing_text = f"""The portfolio required rebalancing on {len(rebalance_dates)} 
-                occasions to maintain the target beta exposure. Major rebalancing events occurred on: 
-                {', '.join(d.strftime('%Y-%m-%d') for d in rebalance_dates[:3])}..."""
-            else:
-                rebalancing_text = "The portfolio maintained its target beta exposure without requiring rebalancing."
-            story.append(Paragraph(rebalancing_text, styles["Normal"]))
-            progress.update(task, advance=20)
-
-            # Build and save the PDF
-            doc.build(story)
-            progress.update(task, advance=10)
-
-            logger.info(f"Monthly report generated successfully: {output_path}")
+        logger.info(f"Monthly report generated: {report_path}")
 
     except Exception as e:
         logger.error(f"Error generating monthly report: {str(e)}")
         raise
+
+
+def generate_performance_report(
+    portfolio_data: pd.DataFrame,
+    performance_metrics: dict,
+    output_dir: str = "reports"
+) -> str:
+    """
+    Generate a detailed performance report in Excel format.
+    
+    Args:
+        portfolio_data: DataFrame with portfolio performance data
+        performance_metrics: Dictionary containing performance metrics
+        output_dir: Directory to save the report (default: 'reports')
+    
+    Returns:
+        Path to the generated report file
+    """
+    logging.info("Generating detailed performance report...")
+    
+    # Create output directory if it doesn't exist
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    
+    # Format report filename
+    report_file = f"{output_dir}/portfolio_performance.xlsx"
+    
+    # Create Excel writer
+    with pd.ExcelWriter(report_file) as writer:
+        # Write portfolio data
+        portfolio_data.to_excel(writer, sheet_name='Portfolio Data')
+        
+        # Write performance metrics
+        pd.DataFrame.from_dict(
+            performance_metrics,
+            orient='index',
+            columns=['Value']
+        ).to_excel(writer, sheet_name='Performance Metrics')
+    
+    logging.info(f"Performance report generated: {report_file}")
+    return report_file
 
 
 def export_to_excel(
@@ -228,6 +163,11 @@ def export_to_excel(
                 )
                 progress.update(task, advance=30)
 
+                # Calculate total return
+                initial_value = daily_results["portfolio_value_usd"].iloc[0]
+                final_value = daily_results["portfolio_value_usd"].iloc[-1]
+                total_return = ((final_value / initial_value) - 1) * 100
+
                 # Summary statistics sheet
                 summary_stats = pd.DataFrame(
                     {
@@ -242,14 +182,7 @@ def export_to_excel(
                             "Total Transaction Costs",
                         ],
                         "Value": [
-                            (
-                                (
-                                    daily_results["portfolio_value_usd"].iloc[-1]
-                                    / daily_results["portfolio_value_usd"].iloc[0]
-                                    - 1
-                                )
-                                * 100
-                            ),
+                            total_return,
                             daily_results["daily_return"].mean() * 100,
                             daily_results["daily_return"].std() * 100,
                             daily_results["portfolio_beta"].mean(),
@@ -269,4 +202,70 @@ def export_to_excel(
 
     except Exception as e:
         logger.error(f"Error exporting to Excel: {str(e)}")
+        raise
+
+
+def calculate_portfolio_metrics(simulation_results: pd.DataFrame, market_data: pd.DataFrame) -> dict:
+    """
+    Calculate portfolio performance metrics from simulation results.
+
+    Args:
+        simulation_results (pd.DataFrame): Daily simulation results
+        market_data (pd.DataFrame): Market data for all tickers
+
+    Returns:
+        dict: Dictionary containing calculated metrics
+    """
+    try:
+        # Calculate basic metrics
+        initial_value_usd = simulation_results["portfolio_value_usd"].iloc[0]
+        final_value_usd = simulation_results["portfolio_value_usd"].iloc[-1]
+        total_return = (final_value_usd / initial_value_usd) - 1
+        
+        # Calculate annualized return
+        trading_days = len(simulation_results)
+        annualized_return = (1 + total_return) ** (252 / trading_days) - 1
+        
+        # Calculate Sharpe ratio (assuming risk-free rate of 0.02)
+        risk_free_rate = 0.02
+        daily_returns = simulation_results["daily_return"]
+        excess_returns = daily_returns - (risk_free_rate / 252)
+        sharpe_ratio = np.sqrt(252) * excess_returns.mean() / excess_returns.std()
+        
+        # Calculate maximum drawdown
+        rolling_max = simulation_results["portfolio_value_usd"].expanding().max()
+        drawdowns = simulation_results["portfolio_value_usd"] / rolling_max - 1
+        max_drawdown = drawdowns.min()
+        
+        # Calculate portfolio beta
+        portfolio_beta = simulation_results["portfolio_beta"].mean()
+        
+        # Calculate Value at Risk
+        var_95 = np.percentile(simulation_results["daily_return"], 5)
+        var_99 = np.percentile(simulation_results["daily_return"], 1)
+        
+        # Calculate Expected Shortfall
+        es_95 = simulation_results["daily_return"][simulation_results["daily_return"] <= var_95].mean()
+        
+        # Calculate fee metrics
+        total_management_fees = simulation_results["management_fee"].sum()
+        total_transaction_costs = simulation_results["transaction_costs"].sum()
+        
+        return {
+            "initial_value_usd": initial_value_usd,
+            "final_value_usd": final_value_usd,
+            "total_return": total_return,
+            "annualized_return": annualized_return,
+            "sharpe_ratio": sharpe_ratio,
+            "max_drawdown": max_drawdown,
+            "portfolio_beta": portfolio_beta,
+            "var_95": var_95,
+            "var_99": var_99,
+            "es_95": es_95,
+            "total_management_fees": total_management_fees,
+            "total_transaction_costs": total_transaction_costs
+        }
+        
+    except Exception as e:
+        logger.error(f"Error calculating portfolio metrics: {str(e)}")
         raise

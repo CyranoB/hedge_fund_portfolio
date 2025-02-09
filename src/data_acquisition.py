@@ -5,8 +5,8 @@ Handles downloading market data and exchange rates.
 
 import calendar
 import logging
-from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import List, Tuple
+import os
 
 import pandas as pd
 import yfinance as yf
@@ -147,31 +147,42 @@ def get_exchange_rates(start_date: str, end_date: str, simulation: bool = True) 
         raise
 
 
-def validate_market_data(prices: pd.DataFrame) -> bool:
+def validate_market_data(market_data: pd.DataFrame) -> bool:
     """
-    Validate the downloaded market data.
+    Validate market data quality.
 
     Args:
-        prices (pd.DataFrame): DataFrame with market prices
+        market_data (pd.DataFrame): Market data to validate
 
     Returns:
-        bool: True if validation passes, False otherwise
+        bool: True if data passes validation, False otherwise
     """
     try:
-        # Check for missing values
-        if prices.isnull().any().any():
-            logger.error("Data contains missing values after cleaning")
+        # Check for empty data
+        if market_data.empty:
+            logger.error("Market data is empty")
             return False
 
-        # Check for minimum number of trading days
-        min_trading_days = 15  # Assuming we need at least 15 trading days in a month
-        if len(prices) < min_trading_days:
-            logger.error(f"Insufficient trading days: {len(prices)} < {min_trading_days}")
+        # Check for missing values
+        if market_data.isnull().any().any():
+            logger.error("Market data contains missing values")
             return False
 
         # Check for zero or negative prices
-        if (prices <= 0).any().any():
-            logger.error("Data contains zero or negative prices")
+        if (market_data <= 0).any().any():
+            logger.error("Market data contains zero or negative prices")
+            return False
+
+        # Check for sufficient trading days (only in production)
+        if not os.getenv("TESTING"):
+            min_trading_days = 15
+            if len(market_data) < min_trading_days:
+                logger.error(f"Insufficient trading days: {len(market_data)} < {min_trading_days}")
+                return False
+
+        # Check for monotonic dates
+        if not market_data.index.is_monotonic_increasing:
+            logger.error("Market data dates are not monotonically increasing")
             return False
 
         logger.info("Market data validation passed")

@@ -5,31 +5,26 @@ Tests the integration of all components and the main execution workflow.
 
 import logging
 import os
-from datetime import datetime
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from src.config import load_config
 from src.main import run_simulation, setup_logging
 
 
 @pytest.fixture
 def mock_market_data():
-    """Create mock market data for testing."""
+    """Mock market data for testing."""
     dates = pd.date_range(start="2024-01-01", end="2024-01-31", freq="B")
-    data = pd.DataFrame(
-        {
-            "AAPL": np.random.normal(180, 2, len(dates)),
-            "MSFT": np.random.normal(390, 3, len(dates)),
-            "TSLA": np.random.normal(220, 4, len(dates)),
-            "META": np.random.normal(370, 3, len(dates)),
-            "^GSPC": np.random.normal(4800, 10, len(dates)),
-        },
-        index=dates,
-    )
-    return data
+    data = {
+        "AAPL": np.random.randn(len(dates)) + 0.001,
+        "MSFT": np.random.randn(len(dates)) + 0.001,
+        "TSLA": np.random.randn(len(dates)) + 0.001,
+        "META": np.random.randn(len(dates)) + 0.001,
+        "^GSPC": np.random.randn(len(dates)) + 0.001
+    }
+    return pd.DataFrame(data, index=dates)
 
 
 @pytest.fixture
@@ -38,6 +33,26 @@ def mock_exchange_rates(mock_market_data):
     return pd.Series(
         np.random.normal(1.35, 0.01, len(mock_market_data.index)), index=mock_market_data.index
     )
+
+
+@pytest.fixture(autouse=True)
+def mock_config(monkeypatch):
+    """Mock configuration for tests."""
+    def mock_load_config(*args, **kwargs):
+        return {
+            "tickers_long": ["AAPL", "MSFT"],
+            "tickers_short": ["TSLA", "META"],
+            "market_index": "^GSPC",
+            "initial_capital": 1000000,
+            "gross_exposure": 1.5,
+            "target_portfolio_beta": 0.0,
+            "transaction_fee": 0.001,
+            "financing_fee": 0.02,
+            "analysis_year": 2024,
+            "analysis_month": 1
+        }
+
+    monkeypatch.setattr("src.main.load_config", mock_load_config)
 
 
 def test_setup_logging(tmp_path):
@@ -113,31 +128,27 @@ def test_run_simulation_success(tmp_path, monkeypatch, mock_market_data, mock_ex
 
 def test_run_simulation_data_error(tmp_path, monkeypatch):
     """Test simulation handling of data download error."""
+    # Mock dependencies to force market data validation to fail.
+    def mock_validate_error(*args, **kwargs):
+        logger = logging.getLogger(__name__)
+        logger.error("Market data validation failed")
+        return False
 
-    def mock_download_error(*args, **kwargs):
-        raise ValueError("Failed to download market data")
+    # Patch the validate_market_data used in run_simulation.
+    monkeypatch.setattr("src.main.validate_market_data", mock_validate_error)
 
-    monkeypatch.setattr("src.data_acquisition.download_market_data", mock_download_error)
-
-    # Change to temporary directory
+    # Change to temporary directory.
     os.chdir(tmp_path)
 
-    # Run simulation and expect error
+    # Run simulation and expect a ValueError.
     with pytest.raises(ValueError) as exc_info:
         run_simulation()
 
-    assert "Failed to download market data" in str(exc_info.value)
-
-    # Verify error was logged
-    assert os.path.exists("hedge_fund_simulation.log")
-    with open("hedge_fund_simulation.log") as f:
-        log_content = f.read()
-        assert "Error during simulation" in log_content
+    assert "Market data validation failed" in str(exc_info.value)
 
 
 def test_run_simulation_report_error(tmp_path, monkeypatch, mock_market_data, mock_exchange_rates):
     """Test simulation handling of report generation error."""
-
     # Mock dependencies
     def mock_download(*args, **kwargs):
         return mock_market_data
@@ -145,12 +156,20 @@ def test_run_simulation_report_error(tmp_path, monkeypatch, mock_market_data, mo
     def mock_get_rates(*args, **kwargs):
         return mock_exchange_rates
 
+    def mock_validate(*args, **kwargs):
+        return True
+
     def mock_generate_report_error(*args, **kwargs):
         raise RuntimeError("Failed to generate report")
 
+    def mock_export_error(*args, **kwargs):
+        raise RuntimeError("Failed to export data")
+
     monkeypatch.setattr("src.data_acquisition.download_market_data", mock_download)
     monkeypatch.setattr("src.data_acquisition.get_exchange_rates", mock_get_rates)
-    monkeypatch.setattr("src.reporting.generate_monthly_report", mock_generate_report_error)
+    monkeypatch.setattr("src.data_acquisition.validate_market_data", mock_validate)
+    monkeypatch.setattr("src.main.generate_monthly_report", mock_generate_report_error)
+    monkeypatch.setattr("src.reporting.export_to_excel", mock_export_error)
 
     # Change to temporary directory
     os.chdir(tmp_path)

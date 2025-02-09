@@ -6,11 +6,12 @@ Handles beta calculations, portfolio initialization, and rebalancing.
 import logging
 from typing import Dict, List, Tuple
 
-import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
+
+from src.config import BETA_TOLERANCE, MARKET_INDEX
 
 # Configure logging
 logging.basicConfig(
@@ -83,219 +84,117 @@ def compute_portfolio_beta(positions: Dict[str, float], betas: Dict[str, float])
 
 
 def initialize_portfolio(
-    initial_capital: float, prices: pd.DataFrame, tickers_long: List[str], tickers_short: List[str]
+    initial_capital: float,
+    tickers_long: List[str],
+    tickers_short: List[str],
+    betas: Dict[str, float],
+    target_portfolio_beta: float,
+    gross_exposure: float
 ) -> Dict[str, float]:
     """
-    Initialize the portfolio with equal allocation to long and short positions.
+    Initialize a portfolio with positions for long and short tickers that achieve the
+    desired gross exposure and target portfolio beta.
+
+    For target beta = 0, compute the total dollar allocation for longs and shorts such that:
+      L = initial_capital * gross_exposure * (avg_short_beta) / (avg_long_beta + avg_short_beta)
+      S = initial_capital * gross_exposure - L
+    Then, allocate these exposures equally among the tickers on each side.
 
     Args:
-        initial_capital (float): Initial capital in USD
-        prices (pd.DataFrame): DataFrame with initial prices for all tickers
-        tickers_long (List[str]): List of tickers for long positions
-        tickers_short (List[str]): List of tickers for short positions
+        initial_capital (float): The starting capital.
+        tickers_long (list of str): Tickers for long positions.
+        tickers_short (list of str): Tickers for short positions.
+        betas (dict): Dictionary mapping each ticker to its beta.
+        target_portfolio_beta (float): The target beta for the portfolio (typically 0).
+        gross_exposure (float): Desired gross exposure (e.g., 1.5).
 
     Returns:
-        Dict[str, float]: Dictionary mapping tickers to number of shares
+        dict: A dictionary mapping tickers to their dollar allocations (positive for longs,
+              negative for shorts).
     """
-    try:
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            console=console,
-        ) as progress:
-            task = progress.add_task("[green]Initializing portfolio...", total=100)
+    total_exposure = initial_capital * gross_exposure
 
-            # Get initial prices
-            initial_prices = prices.iloc[0]
-            progress.update(task, advance=20)
+    # Compute average beta for each side.
+    avg_long_beta = sum(betas[ticker] for ticker in tickers_long) / len(tickers_long)
+    avg_short_beta = sum(betas[ticker] for ticker in tickers_short) / len(tickers_short)
 
-            # Calculate capital per side (long/short)
-            capital_per_side = initial_capital / 2
-            capital_per_ticker_long = capital_per_side / len(tickers_long)
-            capital_per_ticker_short = capital_per_side / len(tickers_short)
-            progress.update(task, advance=20)
+    # For a market-neutral (beta = 0) portfolio, the long and short exposures must offset each other.
+    # Calculate the total long exposure (L) and short exposure (S).
+    L = total_exposure * (avg_short_beta) / (avg_long_beta + avg_short_beta)
+    S = total_exposure - L
 
-            # Initialize portfolio dictionary
-            portfolio = {}
+    portfolio = {}
 
-            # Calculate shares for long positions
-            for ticker in tickers_long:
-                shares = capital_per_ticker_long / initial_prices[ticker]
-                portfolio[ticker] = shares
-            progress.update(task, advance=30)
+    # Allocate long exposure equally among long tickers.
+    for ticker in tickers_long:
+        portfolio[ticker] = L / len(tickers_long)
 
-            # Calculate shares for short positions
-            for ticker in tickers_short:
-                shares = -capital_per_ticker_short / initial_prices[ticker]  # Negative for short
-                portfolio[ticker] = shares
-            progress.update(task, advance=30)
+    # Allocate short exposure equally among short tickers (using negative allocations).
+    for ticker in tickers_short:
+        portfolio[ticker] = - (S / len(tickers_short))
 
-            logger.info("Portfolio initialized successfully")
-            return portfolio
-
-    except Exception as e:
-        logger.error(f"Error initializing portfolio: {str(e)}")
-        raise
+    return portfolio
 
 
 def rebalance_portfolio(
-    current_portfolio: Dict[str, float],
-    day_prices: pd.Series,
+    portfolio: Dict[str, float],
+    prices: pd.Series,
     betas: Dict[str, float],
-    target_beta: float = 0,
-    tolerance: float = 0.05,
+    target_beta: float = 0.0,
 ) -> Tuple[Dict[str, float], float]:
     """
-    Rebalance the portfolio to maintain beta neutrality.
-
+    Rebalance the portfolio to maintain market neutrality and target beta.
+    
     Args:
-        current_portfolio (Dict[str, float]): Current portfolio positions
-        day_prices (pd.Series): Current day's prices
-        betas (Dict[str, float]): Beta values for each ticker
-        target_beta (float): Target portfolio beta (default 0 for beta neutral)
-        tolerance (float): Acceptable deviation from target beta
-
+        portfolio: Current portfolio positions (shares)
+        prices: Current prices for all tickers
+        betas: Beta values for each ticker
+        target_beta: Target portfolio beta (default: 0.0 for market neutral)
+    
     Returns:
-        Tuple[Dict[str, float], float]: Updated portfolio and transaction costs
+        Tuple[Dict[str, float], float]: Updated portfolio positions and transaction costs
     """
-    try:
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            console=console,
-        ) as progress:
-            task = progress.add_task("[yellow]Rebalancing portfolio...", total=100)
-
-            # Calculate current positions in USD
-            positions = {
-                ticker: shares * day_prices[ticker] for ticker, shares in current_portfolio.items()
-            }
-            progress.update(task, advance=20)
-
-            # Calculate current portfolio beta
-            current_beta = compute_portfolio_beta(positions, betas)
-
-            # Check if rebalancing is needed
-            if abs(current_beta - target_beta) <= tolerance:
-                logger.info("Portfolio within beta tolerance, no rebalancing needed")
-                return current_portfolio, 0.0
-
-            progress.update(task, advance=20)
-
-            # Separate long and short positions
-            long_positions = {t: s for t, s in current_portfolio.items() if s > 0}
-            short_positions = {t: s for t, s in current_portfolio.items() if s < 0}
-
-            # Calculate adjustment factor based on beta deviation
-            beta_deviation = target_beta - current_beta
-
-            # Calculate total long and short exposures
-            long_exposure = sum(positions[t] for t in long_positions)
-            short_exposure = abs(sum(positions[t] for t in short_positions))
-            total_exposure = long_exposure + short_exposure
-
-            # Calculate target exposures to achieve desired beta
-            if target_beta >= 0:
-                # For positive target beta, increase long exposure relative to short
-                target_long_ratio = (1 + target_beta) / 2
-                target_short_ratio = (1 - target_beta) / 2
-            else:
-                # For negative target beta, increase short exposure relative to long
-                target_long_ratio = (1 + target_beta) / 2
-                target_short_ratio = (1 - target_beta) / 2
-
-            progress.update(task, advance=20)
-
-            # Adjust positions iteratively
-            max_iterations = 20
-            iteration = 0
-            new_portfolio = current_portfolio.copy()
-            total_adjustment = 0
-            best_portfolio = new_portfolio.copy()
-            best_beta_diff = float("inf")
-
-            while iteration < max_iterations:
-                # Calculate current exposures
-                current_positions = {
-                    ticker: shares * day_prices[ticker] for ticker, shares in new_portfolio.items()
-                }
-                current_long = sum(pos for pos in current_positions.values() if pos > 0)
-                current_short = abs(sum(pos for pos in current_positions.values() if pos < 0))
-                current_total = current_long + current_short
-
-                # Calculate scaling factors
-                long_scale = (
-                    (target_long_ratio * total_exposure) / current_long if current_long > 0 else 1
-                )
-                short_scale = (
-                    (target_short_ratio * total_exposure) / current_short
-                    if current_short > 0
-                    else 1
-                )
-
-                # Apply damping
-                damping = max(0.2, 1.0 - iteration / max_iterations)
-                long_scale = 1 + (long_scale - 1) * damping
-                short_scale = 1 + (short_scale - 1) * damping
-
-                # Scale positions
-                for ticker in long_positions:
-                    new_shares = new_portfolio[ticker] * long_scale
-                    total_adjustment += abs(new_shares - new_portfolio[ticker])
-                    new_portfolio[ticker] = new_shares
-
-                for ticker in short_positions:
-                    new_shares = new_portfolio[ticker] * short_scale
-                    total_adjustment += abs(new_shares - new_portfolio[ticker])
-                    new_portfolio[ticker] = new_shares
-
-                # Calculate new beta
-                new_positions = {
-                    ticker: shares * day_prices[ticker] for ticker, shares in new_portfolio.items()
-                }
-                new_beta = compute_portfolio_beta(new_positions, betas)
-
-                # Track best portfolio
-                current_beta_diff = abs(new_beta - target_beta)
-                if current_beta_diff < best_beta_diff:
-                    best_beta_diff = current_beta_diff
-                    best_portfolio = new_portfolio.copy()
-
-                # Check if target reached
-                if current_beta_diff <= tolerance:
-                    break
-
-                # Update target ratios based on remaining deviation
-                beta_deviation = target_beta - new_beta
-                if target_beta >= 0:
-                    target_long_ratio = (1 + target_beta + beta_deviation * damping) / 2
-                    target_short_ratio = (1 - target_beta - beta_deviation * damping) / 2
-                else:
-                    target_long_ratio = (1 + target_beta + beta_deviation * damping) / 2
-                    target_short_ratio = (1 - target_beta - beta_deviation * damping) / 2
-
-                iteration += 1
-
-            # Use the best portfolio we found if we didn't converge
-            if abs(new_beta - target_beta) > tolerance:
-                new_portfolio = best_portfolio
-                new_positions = {
-                    ticker: shares * day_prices[ticker] for ticker, shares in new_portfolio.items()
-                }
-                new_beta = compute_portfolio_beta(new_positions, betas)
-
-            progress.update(task, advance=40)
-
-            # Calculate transaction costs
-            from src.config import TRANSACTION_FEE_PER_SHARE
-
-            transaction_costs = total_adjustment * TRANSACTION_FEE_PER_SHARE
-
-            logger.info(f"Portfolio rebalanced. Transaction costs: ${transaction_costs:.2f}")
-            return new_portfolio, transaction_costs
-
-    except Exception as e:
-        logger.error(f"Error rebalancing portfolio: {str(e)}")
-        raise
+    logging.info("Rebalancing portfolio to maintain market neutrality...")
+    
+    # Calculate current positions in USD
+    positions = {ticker: shares * prices[ticker] for ticker, shares in portfolio.items()}
+    
+    # Calculate current portfolio beta
+    current_beta = compute_portfolio_beta(positions, betas)
+    
+    # If beta is within tolerance, no rebalancing needed
+    if abs(current_beta - target_beta) <= BETA_TOLERANCE:
+        logging.info(f"Portfolio beta {current_beta:.2f} within tolerance of target {target_beta}")
+        return portfolio.copy(), 0.0
+    
+    # Calculate total long and short exposure
+    long_exposure = sum(value for value in positions.values() if value > 0)
+    short_exposure = abs(sum(value for value in positions.values() if value < 0))
+    
+    # Calculate adjustment factor to achieve target beta
+    beta_adjustment = (target_beta - current_beta) / 2
+    
+    # Adjust positions to achieve target beta
+    new_portfolio = {}
+    total_transaction_cost = 0.0
+    
+    for ticker, shares in portfolio.items():
+        # Calculate adjustment based on beta difference
+        adjustment = beta_adjustment * abs(shares) * betas[ticker]
+        
+        # Convert adjustment to shares
+        new_shares = shares + (adjustment / prices[ticker])
+        
+        # Calculate transaction cost
+        shares_traded = abs(new_shares - shares)
+        transaction_cost = shares_traded * 0.01  # $0.01 per share
+        total_transaction_cost += transaction_cost
+        
+        new_portfolio[ticker] = new_shares
+    
+    # Verify new portfolio beta
+    new_positions = {ticker: shares * prices[ticker] for ticker, shares in new_portfolio.items()}
+    new_beta = compute_portfolio_beta(new_positions, betas)
+    logging.info(f"Portfolio rebalanced. New beta: {new_beta:.2f}")
+    
+    return new_portfolio, total_transaction_cost
